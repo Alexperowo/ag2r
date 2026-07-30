@@ -3,12 +3,23 @@ import { TAGGER_SCRIPT } from './browser-tagger.js';
 export const RUNNING_TASKS_SCRIPT = `
 (() => {
   const inputBox = document.getElementById('antigravity.agentSidePanelInputBox');
-  let taskSection = inputBox ? inputBox.querySelector('.rounded-t-2xl') : null;
+  let taskSection = inputBox ? (inputBox.querySelector('.rounded-t-2xl') || inputBox.querySelector('[class*="rounded-t"]')) : null;
   if (!taskSection) {
     taskSection = document.querySelector('[class*="rounded-t-2xl"]') ||
                   document.querySelector('[data-testid="running-tasks-container"]') ||
                   document.querySelector('[aria-label="Running tasks"]') ||
                   document.querySelector('[aria-label="Queued messages"]');
+  }
+  if (!taskSection) {
+    const allDivs = document.querySelectorAll('div');
+    for (const div of allDivs) {
+      const text = div.textContent || '';
+      const hasButtons = div.querySelectorAll('button, a, [role="button"]').length > 0;
+      if (hasButtons && (text.includes('Queued') || text.includes('Running task') || text.includes('Tasks running')) && div.getBoundingClientRect().height > 10 && div.getBoundingClientRect().height < 400) {
+        taskSection = div;
+        break;
+      }
+    }
   }
   if (!taskSection || taskSection.getBoundingClientRect().height <= 0) return null;
   let taskIdx = 0;

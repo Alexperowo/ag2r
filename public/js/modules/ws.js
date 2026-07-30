@@ -22,7 +22,8 @@ function handleAgentRunningChange(newRunning) {
       if (lastBubble) {
         const text = extractCleanText(lastBubble);
         if (text && text.length > 3) {
-          speakText(text);
+          const playBtn = lastBubble.querySelector('.tts-play-btn');
+          speakText(text, playBtn, true);
         }
       }
     }, 1000);
