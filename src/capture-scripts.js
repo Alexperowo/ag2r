@@ -4,27 +4,44 @@ export const RUNNING_TASKS_SCRIPT = `
 (() => {
   const inputBox = document.getElementById('antigravity.agentSidePanelInputBox');
   let taskSection = inputBox ? (inputBox.querySelector('.rounded-t-2xl') || inputBox.querySelector('[class*="rounded-t"]')) : null;
+  
   if (!taskSection) {
     taskSection = document.querySelector('[class*="rounded-t-2xl"]') ||
                   document.querySelector('[data-testid="running-tasks-container"]') ||
+                  document.querySelector('[data-testid*="queue"]') ||
                   document.querySelector('[aria-label="Running tasks"]') ||
-                  document.querySelector('[aria-label="Queued messages"]');
+                  document.querySelector('[aria-label*="Queue" i]') ||
+                  document.querySelector('[class*="queued"]') ||
+                  document.querySelector('[class*="pending-messages"]');
   }
+
+  if (!taskSection && inputBox) {
+    for (const child of inputBox.children) {
+      if (child.querySelector('textarea, [contenteditable="true"]')) continue;
+      if (child.getBoundingClientRect().height > 5) {
+        taskSection = child;
+        break;
+      }
+    }
+  }
+
   if (!taskSection) {
     const allDivs = document.querySelectorAll('div');
     for (const div of allDivs) {
-      const text = div.textContent || '';
-      const hasButtons = div.querySelectorAll('button, a, [role="button"]').length > 0;
-      if (hasButtons && (text.includes('Queued') || text.includes('Running task') || text.includes('Tasks running')) && div.getBoundingClientRect().height > 10 && div.getBoundingClientRect().height < 400) {
+      const text = (div.textContent || '').toLowerCase();
+      if ((text.includes('queued') || text.includes('running task') || text.includes('tasks running')) && 
+          div.getBoundingClientRect().height > 10 && div.getBoundingClientRect().height < 400) {
         taskSection = div;
         break;
       }
     }
   }
+
   if (!taskSection || taskSection.getBoundingClientRect().height <= 0) return null;
+
   let taskIdx = 0;
   const taskTagged = [];
-  taskSection.querySelectorAll('button, a, [role="button"]').forEach(btn => {
+  taskSection.querySelectorAll('button, a, [role="button"], input, span').forEach(btn => {
     btn.setAttribute('data-ag-click-id', 'task:' + taskIdx);
     btn.setAttribute('data-ag-click-label', (btn.textContent || '').trim().substring(0, 80));
     taskIdx++;
