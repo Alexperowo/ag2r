@@ -136,8 +136,29 @@ export async function speakText(text, activeBtn = null, force = false) {
     return;
   }
 
-  // Case 1: Audio for THIS text is currently PAUSED -> RESUME IT!
-  if (_currentAudio && (_currentBtn === activeBtn || _currentText === text) && _currentAudio.paused && !_currentAudio.ended) {
+  // Case 1: Audio is currently PLAYING -> PAUSE IT!
+  if (_currentAudio && !_currentAudio.paused && !_currentAudio.ended) {
+    try {
+      _currentAudio.pause();
+      if (_currentBtn) {
+        const icon = _currentBtn.querySelector('.material-symbols-rounded');
+        if (icon) icon.textContent = 'play_arrow';
+        _currentBtn.style.color = '#38bdf8';
+      }
+      if (activeBtn && activeBtn !== _currentBtn) {
+        const icon = activeBtn.querySelector('.material-symbols-rounded');
+        if (icon) icon.textContent = 'play_arrow';
+        activeBtn.style.color = '#38bdf8';
+        _currentBtn = activeBtn;
+      }
+      return;
+    } catch (e) {
+      console.debug('[TTS] Pause error:', e.message);
+    }
+  }
+
+  // Case 2: Audio is currently PAUSED -> RESUME IT!
+  if (_currentAudio && _currentAudio.paused && !_currentAudio.ended) {
     try {
       _currentBtn = activeBtn || _currentBtn;
       await _currentAudio.play();
@@ -149,21 +170,6 @@ export async function speakText(text, activeBtn = null, force = false) {
       return;
     } catch (e) {
       console.debug('[TTS] Resume error:', e.message);
-    }
-  }
-
-  // Case 2: Audio for THIS text is currently PLAYING -> PAUSE IT!
-  if (_currentAudio && (_currentBtn === activeBtn || _currentText === text) && !_currentAudio.paused && !_currentAudio.ended) {
-    try {
-      _currentAudio.pause(); // Pauses audio without resetting position
-      if (activeBtn) {
-        const icon = activeBtn.querySelector('.material-symbols-rounded');
-        if (icon) icon.textContent = 'play_arrow';
-        activeBtn.style.color = '#38bdf8'; // Keep blue color indicating paused state
-      }
-      return;
-    } catch (e) {
-      console.debug('[TTS] Pause error:', e.message);
     }
   }
 
