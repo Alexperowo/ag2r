@@ -3,12 +3,17 @@ import { TAGGER_SCRIPT } from './browser-tagger.js';
 export const RUNNING_TASKS_SCRIPT = `
 (() => {
   const inputBox = document.getElementById('antigravity.agentSidePanelInputBox');
-  if (!inputBox) return null;
-  const taskSection = inputBox.querySelector('.rounded-t-2xl');
+  let taskSection = inputBox ? inputBox.querySelector('.rounded-t-2xl') : null;
+  if (!taskSection) {
+    taskSection = document.querySelector('[class*="rounded-t-2xl"]') ||
+                  document.querySelector('[data-testid="running-tasks-container"]') ||
+                  document.querySelector('[aria-label="Running tasks"]') ||
+                  document.querySelector('[aria-label="Queued messages"]');
+  }
   if (!taskSection || taskSection.getBoundingClientRect().height <= 0) return null;
   let taskIdx = 0;
   const taskTagged = [];
-  taskSection.querySelectorAll('button').forEach(btn => {
+  taskSection.querySelectorAll('button, a, [role="button"]').forEach(btn => {
     btn.setAttribute('data-ag-click-id', 'task:' + taskIdx);
     btn.setAttribute('data-ag-click-label', (btn.textContent || '').trim().substring(0, 80));
     taskIdx++;
