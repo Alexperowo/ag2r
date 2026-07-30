@@ -99,6 +99,7 @@ export function extractCleanText(element) {
 let _currentAudio = null;
 let _currentAudioUrl = null;
 let _currentBtn = null;
+let _currentText = null;
 
 export function stopAllTts() {
   if (_currentAudio) {
@@ -112,6 +113,7 @@ export function stopAllTts() {
     _currentAudio = null;
     _currentAudioUrl = null;
     _currentBtn = null;
+    _currentText = null;
     window._currentTtsAudio = null;
   }
   if ('speechSynthesis' in window && window.speechSynthesis.speaking) {
@@ -134,14 +136,15 @@ export async function speakText(text, activeBtn = null, force = false) {
     return;
   }
 
-  // If user clicked Play for the same active audio that is currently PAUSED, resume it!
-  if (_currentAudio && _currentBtn === activeBtn && _currentAudio.paused && !_currentAudio.ended) {
+  // Case 1: Audio for THIS text is currently PAUSED -> RESUME IT!
+  if (_currentAudio && (_currentBtn === activeBtn || _currentText === text) && _currentAudio.paused && !_currentAudio.ended) {
     try {
+      _currentBtn = activeBtn || _currentBtn;
       await _currentAudio.play();
-      if (activeBtn) {
-        const icon = activeBtn.querySelector('.material-symbols-rounded');
+      if (_currentBtn) {
+        const icon = _currentBtn.querySelector('.material-symbols-rounded');
         if (icon) icon.textContent = 'pause';
-        activeBtn.style.color = '#38bdf8';
+        _currentBtn.style.color = '#38bdf8';
       }
       return;
     } catch (e) {
@@ -149,9 +152,25 @@ export async function speakText(text, activeBtn = null, force = false) {
     }
   }
 
-  // Stop any other currently playing speech
+  // Case 2: Audio for THIS text is currently PLAYING -> PAUSE IT!
+  if (_currentAudio && (_currentBtn === activeBtn || _currentText === text) && !_currentAudio.paused && !_currentAudio.ended) {
+    try {
+      _currentAudio.pause(); // Pauses audio without resetting position
+      if (activeBtn) {
+        const icon = activeBtn.querySelector('.material-symbols-rounded');
+        if (icon) icon.textContent = 'play_arrow';
+        activeBtn.style.color = '#38bdf8'; // Keep blue color indicating paused state
+      }
+      return;
+    } catch (e) {
+      console.debug('[TTS] Pause error:', e.message);
+    }
+  }
+
+  // Case 3: New audio or starting fresh -> Stop previous and start new audio
   stopAllTts();
   _currentBtn = activeBtn;
+  _currentText = text;
 
   if (activeBtn) {
     const icon = activeBtn.querySelector('.material-symbols-rounded');
@@ -173,40 +192,36 @@ export async function speakText(text, activeBtn = null, force = false) {
       _currentAudio = new Audio(_currentAudioUrl);
       window._currentTtsAudio = _currentAudio;
 
-      const resetBtn = () => {
-        if (activeBtn) {
-          const icon = activeBtn.querySelector('.material-symbols-rounded');
-          if (icon) icon.textContent = 'play_arrow';
-          activeBtn.style.color = '';
-        }
-      };
-
       _currentAudio.onended = () => {
         if (_currentAudioUrl) {
           try { URL.revokeObjectURL(_currentAudioUrl); } catch {}
         }
+        if (_currentBtn) {
+          const icon = _currentBtn.querySelector('.material-symbols-rounded');
+          if (icon) icon.textContent = 'play_arrow';
+          _currentBtn.style.color = '';
+        }
         _currentAudio = null;
         _currentAudioUrl = null;
         _currentBtn = null;
+        _currentText = null;
         window._currentTtsAudio = null;
-        resetBtn();
-      };
-
-      _currentAudio.onpause = () => {
-        if (_currentAudio && !_currentAudio.ended) {
-          resetBtn();
-        }
       };
 
       _currentAudio.onerror = () => {
         if (_currentAudioUrl) {
           try { URL.revokeObjectURL(_currentAudioUrl); } catch {}
         }
+        if (_currentBtn) {
+          const icon = _currentBtn.querySelector('.material-symbols-rounded');
+          if (icon) icon.textContent = 'play_arrow';
+          _currentBtn.style.color = '';
+        }
         _currentAudio = null;
         _currentAudioUrl = null;
         _currentBtn = null;
+        _currentText = null;
         window._currentTtsAudio = null;
-        resetBtn();
       };
 
       await _currentAudio.play();
@@ -274,27 +289,26 @@ export function addTTSButtons(container) {
 
     const btn = document.createElement('button');
     btn.className = 'tts-play-btn';
-    btn.innerHTML = '<span class="material-symbols-rounded">play_arrow</span>';
+
+    const text = extractCleanText(bubble);
+
+    if (_currentAudio && _currentText === text) {
+      _currentBtn = btn;
+      const isPlaying = !_currentAudio.paused && !_currentAudio.ended;
+      btn.innerHTML = `<span class="material-symbols-rounded">${isPlaying ? 'pause' : 'play_arrow'}</span>`;
+      btn.style.color = '#38bdf8';
+    } else {
+      btn.innerHTML = '<span class="material-symbols-rounded">play_arrow</span>';
+    }
+
     btn.title = 'Озвучить ответ';
 
     btn.addEventListener('mousedown', e => e.preventDefault());
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-
-      const icon = btn.querySelector('.material-symbols-rounded');
-      const isPauseIcon = icon && icon.textContent === 'pause';
-
-      // If currently playing on THIS button, pause it!
-      if (isPauseIcon && _currentAudio && !_currentAudio.paused) {
-        _currentAudio.pause(); // Pauses audio without resetting time!
-        if (icon) icon.textContent = 'play_arrow';
-        btn.style.color = '';
-        return;
-      }
-
-      const text = extractCleanText(bubble);
-      if (text && text.length > 3) {
-        speakText(text, btn, true);
+      const currentBubbleText = extractCleanText(bubble);
+      if (currentBubbleText && currentBubbleText.length > 3) {
+        speakText(currentBubbleText, btn, true);
       }
     });
 
