@@ -1,258 +1,112 @@
-# AG2R — Antigravity 2.0 Remote
+# AG2R — Antigravity 2.0 Remote (Alexperowo Fork)
 
-A lightweight mobile remote interface for monitoring and interacting with [Antigravity](https://antigravity.dev) AI coding sessions from your phone — on Wi-Fi, hotspot, or anywhere in the world.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-brightgreen.svg)](https://nodejs.org/)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org/)
 
-<p align="center">
-  <img src="docs/hero-mobile.png" alt="AG2R Chat" width="180" />
-  &nbsp;&nbsp;
-  <img src="docs/review-diff.png" alt="AG2R Code Review" width="180" />
-  &nbsp;&nbsp;
-  <img src="docs/comment-queued.png" alt="AG2R Comments" width="180" />
-  &nbsp;&nbsp;
-  <img src="docs/overview-panel.png" alt="AG2R Overview" width="180" />
-</p>
+**AG2R** — мощный, легкий и невероятно удобный мобильный интерфейс управления сессиями **Antigravity AI IDE** с вашего смартфона или планшета (по Wi-Fi, мобильной сети или через туннели).
 
 ---
 
-## 🚀 Getting Started
+## 🌟 Улучшения в этом форке (Alexperowo Fork)
 
-### Prerequisites
+- 🎙️ **Нейросетевая речь диктора (Edge-TTS)**: Выделенная озвучка ответов с помощью живого голоса Microsoft Светланы (`ru-RU-SvetlanaNeural`). Автоматический фоллбэк на встроенный синтезатор.
+- 🎤 **Улучшенный голосовой ввод (STT)**: Фильтрация от повторов и наслаивания фраз при диктовке в Android Chrome / iOS Safari.
+- 📱 **Оптимизация iOS Safari**: Плавный скролл, динамическая высота ввода, `pointerdown` разблокировка звука и масштабируемый интерфейс.
+- 🛡️ **Полный технический аудит (59 улучшений)**: Безопасные вызовы Python через `py`/`python3`, кроссплатформенные пути Windows/Linux, очистка памяти и обработка ошибок сети.
+- 🔄 **Поддержка обновлений IDE**: Поддержка динамических выпадающих списков моделей (`role="presentation"`).
 
-- Node.js 18+
-- Antigravity running with CDP enabled:
+---
+
+## 🚀 Пошаговая инструкция по установке и запуску
+
+### 1. Требования
+- **Node.js** (версия 18 или новее)
+- **Python** (3.10 или новее)
+- **Antigravity IDE**
+
+---
+
+### 2. Подготовка и установка
+
+```bash
+# 1. Клонируйте репозиторий
+git clone https://github.com/Alexperowo/ag2r.git
+cd ag2r
+
+# 2. Установите зависимости Node.js
+npm install
+
+# 3. Установите библиотеку нейросетевого голоса Python
+py -m pip install edge-tts
+# Или на macOS/Linux: python3 -m pip install edge-tts
+
+# 4. Скопируйте шаблон настроек
+cp .env.example .env
+```
+
+---
+
+### 3. Запуск
+
+#### Шаг A. Запустите Antigravity IDE с включенным портом отладки (CDP):
+* **Windows (PowerShell)**:
+  ```powershell
+  & "C:\Program Files\Antigravity\Antigravity.exe" --remote-debugging-port=9000
+  ```
+* **macOS / Linux**:
   ```bash
   antigravity . --remote-debugging-port=9000
   ```
 
-### Setup
-
+#### Шаг B. Запустите сервер AG2R:
 ```bash
-# Clone the repo
-git clone git@github.com:the-future-company/ag2r.git
-cd ag2r
-
-# Install dependencies
-npm install
-
-# Copy environment config and customize
-cp .env.example .env
-
-# Start the server
 node server.js
 ```
 
-On first run, AG2R generates a self-signed SSL certificate in `certs/`.
-
-> [!IMPORTANT]
-> **Never commit your `.env` file.** It contains your password and session secret. The `.env.example` file shows the config template — copy it and customize.
+Сервер запустится по адресу: `https://localhost:3000` (при первом старте создастся SSL-сертификат для работы микрофона).
 
 ---
 
-## 🌐 Three Ways to Connect
+### 4. Подключение со смартфона
 
-### 1. Local Network (Same Wi-Fi)
+#### Способ 1: В одной Wi-Fi сети (Самый простой)
+1. Узнайте IP-адрес вашего компьютера (на Windows введите `ipconfig` в командной строке, например `192.168.1.50`).
+2. На смартфоне откройте браузер и введите: `https://192.168.1.50:3000`
+3. Примите предупреждение о самоподписанном сертификате.
+4. Введите пароль (по умолчанию: `antigravity`, настраивается в `.env`).
 
-The simplest setup — works when your phone and computer are on the same Wi-Fi network.
-
-1. Start the server: `node server.js`
-2. Open `https://<your-computer-ip>:3000` on your phone
-3. Accept the self-signed certificate warning
-4. Enter the passcode (default: `antigravity`, configurable in `.env`)
-
-> [!NOTE]
-> This does **not** work over mobile hotspot or when you're away from home. Your phone must be on the same network as the computer running AG2R.
-
----
-
-### 2. Quick Tunnel (Any Network, Temporary URL)
-
-Use [Cloudflare's free quick tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) for instant access from anywhere — no account or domain required. The URL changes each time you restart.
-
+#### Способ 2: Из любой точки мира (Cloudflare Tunnel)
 ```bash
-# Install cloudflared (macOS)
-brew install cloudflared
-
-# Start AG2R
-node server.js
-
-# In a second terminal, start the tunnel
-cloudflared tunnel --url https://localhost:3000 --no-tls-verify
+# В отдельном окне терминала запустите бесплатный туннель:
+npx cloudflared tunnel --url https://localhost:3000 --no-tls-verify
 ```
-
-Cloudflared prints a random URL like `https://random-words.trycloudflare.com`. Open that on your phone.
-
-> [!WARNING]
-> **Set a strong password in `.env` before using any tunnel.** The default password `antigravity` is not secure for internet-facing access.
->
-> ```bash
-> # In .env
-> APP_PASSWORD=your-strong-password-here
-> SESSION_SECRET=run-openssl-rand-hex-24-to-generate
-> ```
+Откройте ссылку `https://...trycloudflare.com`, которую выведет туннель.
 
 ---
 
-### 3. Dedicated Tunnel (Any Network, Stable URL)
+## 📖 Как пользоваться
 
-Set up a permanent Cloudflare tunnel with your own domain for a stable URL that never changes.
-
-**Prerequisites:**
-- A [Cloudflare account](https://dash.cloudflare.com) (free)
-- A domain with DNS managed by Cloudflare
-
-**One-time setup:**
-
-```bash
-# Install cloudflared
-brew install cloudflared
-
-# Login to Cloudflare (select your domain when prompted)
-cloudflared tunnel login
-
-# Create a named tunnel
-cloudflared tunnel create ag2r
-
-# Route your subdomain to the tunnel
-cloudflared tunnel route dns ag2r ag2r.yourdomain.com
-```
-
-**Create the config file** at `~/.cloudflared/config.yml`:
-
-```yaml
-tunnel: <TUNNEL_ID_FROM_CREATE_STEP>
-credentials-file: /path/to/.cloudflared/<TUNNEL_ID>.json
-
-ingress:
-  - hostname: ag2r.yourdomain.com
-    service: https://localhost:3000
-    originRequest:
-      noTLSVerify: true
-  - service: http_status:404
-```
-
-**Set a password** in `.env`:
-
-```bash
-APP_PASSWORD=your-strong-password
-SESSION_SECRET=run-openssl-rand-hex-24-to-generate
-TUNNEL_ENABLED=true
-TUNNEL_URL=https://ag2r.yourdomain.com
-```
-
-**Run both services:**
-
-```bash
-# Terminal 1: AG2R server
-node server.js
-
-# Terminal 2: Cloudflare tunnel
-cloudflared tunnel run ag2r
-```
-
-Open `https://ag2r.yourdomain.com` on your phone — works from anywhere.
-
-> [!TIP]
-> To run the tunnel as a background service that starts on boot:
-> ```bash
-> cloudflared service install
-> ```
+| Функция | Описание |
+| :--- | :--- |
+| 🔊 **Озвучка ответа (TTS)** | Нажмите иконку **динамика / Play** возле любого ответа агента — прозвучит живой нейросетевой голос Светланы. Повторное нажатие останавливает речь. |
+| 🎤 **Голосовой ввод (STT)** | Нажмите иконку **микрофона** возле строки ввода и диктуйте текст голосом. |
+| 🛡️ **Запросы разрешений** | При появлении запроса доступа к файлам или командам нажимайте **Allow / Proceed** прямо на телефоне. |
+| 📄 **Просмотр артефактов** | Нажимайте на файлы `.md` или артефакты — они откроются в удобном модальном окне с подсветкой. |
+| 🎛️ **Выбор модели** | Нажмите на плашку модели вверху или в строке ввода, чтобы мгновенно сменить модель в IDE (Pro, Flash, Claude, GPT). |
 
 ---
 
-## 📱 Features
+## 🛠️ Файловая структура
 
-### Real-time Chat Monitoring
-
-See Antigravity's responses as they stream in real time. Code blocks, markdown, and all formatting render on your phone exactly as they appear on desktop.
-
-<p align="center">
-  <img src="docs/hero-mobile.png" alt="Real-time chat monitoring" width="320" />
-</p>
+- `server.js` — Главный сервер Express & WebSocket.
+- `src/cdp.js` — Подключение к порту 9000 IDE через Chrome DevTools Protocol.
+- `src/speak.py` — Генератор премиальной нейросетевой речи (Microsoft Edge TTS).
+- `public/js/modules/stt.js` — Распознавание речи с дедупликацией для Android.
+- `public/js/modules/tts.js` — Воспроизведение звука с приоритетом нейросети и фоллбэком на браузер.
 
 ---
 
-### Permission Handling
+## 📄 Лицензия
 
-Approve, deny, or skip permission requests remotely. Select an option, hit Submit, and the agent continues — no need to walk back to your computer.
-
-<p align="center">
-  <img src="docs/permission-banner.png" alt="Permission banner on mobile" width="320" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="docs/overview-with-permission.png" alt="Permission dialog on mobile" width="320" />
-</p>
-
----
-
-### Code Review
-
-Review file changes directly on your phone. See diffs, browse modified files, and navigate between Overview and Review tabs.
-
-<p align="center">
-  <img src="docs/review-file-list.png" alt="Review changes file list" width="320" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="docs/review-diff.png" alt="Code diff view" width="320" />
-</p>
----
-
-### Commenting
-
-Select text on any document, leave comments with context, and queue them for batch sending. Comments capture the selected text as a quote and your annotation.
-
-<p align="center">
-  <img src="docs/comment-add.png" alt="Add Comment dialog" width="320" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="docs/comment-queued.png" alt="Queued Comments modal" width="320" />
-</p>
-
----
-
-### Sidebar Navigation & Overview
-
-Switch between conversations, browse files changed, artifacts, and background tasks — all from the sidebar and overview panel.
-
-<p align="center">
-  <img src="docs/sidebar-conversations.png" alt="Sidebar conversation list" width="300" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="docs/overview-panel.png" alt="Overview panel" width="320" />
-</p>
-
----
-
-### Desktop & Tablet Support
-
-<p align="center">
-  <img src="docs/hero-desktop.png" alt="AG2R Review Changes — Desktop" width="700" />
-</p>
-<p align="center">
-  <img src="docs/chat-monitoring.png" alt="AG2R Chat — Desktop" width="700" />
-</p>
-<p align="center">
-  <img src="docs/permission-save-rule.png" alt="AG2R Permission Dialog — Desktop" width="700" />
-</p>
-<p align="center">
-  <em>Compatible with tablets or desktops as well</em>
-</p>
-
----
-
-### More Features
-
-- **Send messages** — type and send messages to the AI from your phone
-- **Voice input** — dictate messages using your phone's microphone
-- **Stop generation** — cancel a running generation with the stop button
-- **Auto-reconnect** — seamless reconnection when connection drops
-- **Cookie-based auth** — enter passcode once, stays logged in for 30 days
-
----
-
-## 🤖 For AI Agents
-
-> Start with **[ONBOARDING.md](./ONBOARDING.md)** for the full technical reference (architecture, file maps, workflows). Your behavioral rules are in **[GEMINI.md](./GEMINI.md)**.
-
-## 📊 Telemetry
-
-AG2R collects anonymous usage metrics (feature counts, crash reports — no personal data) to help improve the project. Set `AG2R_TELEMETRY=false` in your `.env` to disable.
-
-## License
-
-MIT — see [LICENSE](./LICENSE) for details.
+MIT License — см. [LICENSE](LICENSE)
