@@ -2,7 +2,7 @@ import { state } from './state.js';
 import { loadSnapshot } from './snapshot.js';
 import { updateConnectionStatus } from './misc.js';
 import { updateActionButton } from './input.js';
-import { speakText, extractCleanText, isTtsEnabled } from './tts.js';
+import { speakText, extractCleanText, isTtsEnabled, getAgentBubbles } from './tts.js';
 
 let wsReconnectDelay = 1000;
 
@@ -17,7 +17,8 @@ function handleAgentRunningChange(newRunning) {
 
   if (wasRunning && !state.agentRunning && isTtsEnabled()) {
     setTimeout(() => {
-      const bubbles = document.querySelectorAll('#chat-content [role="article"][aria-label="Agent response"]');
+      const chatRoot = document.getElementById('chat-content') || document;
+      const bubbles = getAgentBubbles(chatRoot);
       const lastBubble = bubbles[bubbles.length - 1];
       if (lastBubble) {
         const text = extractCleanText(lastBubble);

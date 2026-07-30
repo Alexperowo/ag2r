@@ -96,12 +96,22 @@ export function extractCleanText(element) {
   return text;
 }
 
+let _currentAudio = null;
+let _currentAudioUrl = null;
+let _currentBtn = null;
+
 export function stopAllTts() {
-  if (window._currentTtsAudio) {
+  if (_currentAudio) {
     try {
-      window._currentTtsAudio.pause();
-      window._currentTtsAudio.currentTime = 0;
+      _currentAudio.pause();
+      _currentAudio.currentTime = 0;
     } catch {}
+    if (_currentAudioUrl) {
+      try { URL.revokeObjectURL(_currentAudioUrl); } catch {}
+    }
+    _currentAudio = null;
+    _currentAudioUrl = null;
+    _currentBtn = null;
     window._currentTtsAudio = null;
   }
   if ('speechSynthesis' in window && window.speechSynthesis.speaking) {
@@ -117,7 +127,6 @@ export function stopAllTts() {
 }
 
 export async function speakText(text, activeBtn = null, force = false) {
-  // If auto-TTS is disabled and this was NOT an explicit button click, do nothing
   if (!force && !activeBtn && !isTtsEnabled()) return;
 
   if (!text || text.length < 3) {
@@ -125,14 +134,28 @@ export async function speakText(text, activeBtn = null, force = false) {
     return;
   }
 
-  // Stop any currently playing audio/TTS before starting a new one
-  stopAllTts();
+  // If user clicked Play for the same active audio that is currently PAUSED, resume it!
+  if (_currentAudio && _currentBtn === activeBtn && _currentAudio.paused && !_currentAudio.ended) {
+    try {
+      await _currentAudio.play();
+      if (activeBtn) {
+        const icon = activeBtn.querySelector('.material-symbols-rounded');
+        if (icon) icon.textContent = 'pause';
+        activeBtn.style.color = '#38bdf8';
+      }
+      return;
+    } catch (e) {
+      console.debug('[TTS] Resume error:', e.message);
+    }
+  }
 
-  console.log('[TTS] Speaking text (' + text.length + ' chars):', text.substring(0, 150) + '...');
+  // Stop any other currently playing speech
+  stopAllTts();
+  _currentBtn = activeBtn;
 
   if (activeBtn) {
     const icon = activeBtn.querySelector('.material-symbols-rounded');
-    if (icon) icon.textContent = 'stop';
+    if (icon) icon.textContent = 'pause';
     activeBtn.style.color = '#38bdf8';
   }
 
@@ -146,24 +169,47 @@ export async function speakText(text, activeBtn = null, force = false) {
 
     if (res.ok) {
       const blob = await res.blob();
-      const audioUrl = URL.createObjectURL(blob);
-      const audio = new Audio(audioUrl);
-      
-      window._currentTtsAudio = audio;
-      
-      const cleanup = () => {
-        URL.revokeObjectURL(audioUrl);
-        if (window._currentTtsAudio === audio) {
-          window._currentTtsAudio = null;
+      _currentAudioUrl = URL.createObjectURL(blob);
+      _currentAudio = new Audio(_currentAudioUrl);
+      window._currentTtsAudio = _currentAudio;
+
+      const resetBtn = () => {
+        if (activeBtn) {
+          const icon = activeBtn.querySelector('.material-symbols-rounded');
+          if (icon) icon.textContent = 'play_arrow';
+          activeBtn.style.color = '';
         }
-        stopAllTts();
       };
 
-      audio.onended = cleanup;
-      audio.onerror = cleanup;
-      audio.onpause = cleanup;
+      _currentAudio.onended = () => {
+        if (_currentAudioUrl) {
+          try { URL.revokeObjectURL(_currentAudioUrl); } catch {}
+        }
+        _currentAudio = null;
+        _currentAudioUrl = null;
+        _currentBtn = null;
+        window._currentTtsAudio = null;
+        resetBtn();
+      };
 
-      await audio.play();
+      _currentAudio.onpause = () => {
+        if (_currentAudio && !_currentAudio.ended) {
+          resetBtn();
+        }
+      };
+
+      _currentAudio.onerror = () => {
+        if (_currentAudioUrl) {
+          try { URL.revokeObjectURL(_currentAudioUrl); } catch {}
+        }
+        _currentAudio = null;
+        _currentAudioUrl = null;
+        _currentBtn = null;
+        window._currentTtsAudio = null;
+        resetBtn();
+      };
+
+      await _currentAudio.play();
       console.log('[TTS] Playing Neural TTS audio');
       return;
     }
@@ -197,6 +243,17 @@ export async function speakText(text, activeBtn = null, force = false) {
   });
 }
 
+export function getAgentBubbles(container = document) {
+  let bubbles = container.querySelectorAll('[role="article"][aria-label="Agent response"], [role="article"]:not([aria-label*="User"]), [data-testid="agent-message"]');
+  if (bubbles.length === 0) {
+    bubbles = container.querySelectorAll('.prose');
+  }
+  return Array.from(bubbles).filter(bubble => {
+    const label = (bubble.getAttribute('aria-label') || '').toLowerCase();
+    return !label.includes('user prompt') && !label.includes('user message');
+  });
+}
+
 // Pre-load voices for mobile browsers
 if ('speechSynthesis' in window) {
   window.speechSynthesis.onvoiceschanged = () => {
@@ -208,7 +265,7 @@ if ('speechSynthesis' in window) {
 }
 
 export function addTTSButtons(container) {
-  const agentBubbles = container.querySelectorAll('[role="article"][aria-label="Agent response"]');
+  const agentBubbles = getAgentBubbles(container);
 
   agentBubbles.forEach(bubble => {
     if (bubble.querySelector('.tts-play-btn')) return;
@@ -225,12 +282,14 @@ export function addTTSButtons(container) {
       e.stopPropagation();
 
       const icon = btn.querySelector('.material-symbols-rounded');
-      const isCurrentlyPlaying = icon && icon.textContent === 'stop';
+      const isPauseIcon = icon && icon.textContent === 'pause';
 
-      // If already speaking on THIS button or ANY audio is playing, stop it
-      if (isCurrentlyPlaying || window._currentTtsAudio || window.speechSynthesis.speaking) {
-        stopAllTts();
-        if (isCurrentlyPlaying) return;
+      // If currently playing on THIS button, pause it!
+      if (isPauseIcon && _currentAudio && !_currentAudio.paused) {
+        _currentAudio.pause(); // Pauses audio without resetting time!
+        if (icon) icon.textContent = 'play_arrow';
+        btn.style.color = '';
+        return;
       }
 
       const text = extractCleanText(bubble);
