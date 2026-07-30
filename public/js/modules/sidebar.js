@@ -50,6 +50,10 @@ export function proxySidebarImages(container) {
         .then(r => r.json())
         .then(({ dataUrl }) => {
           if (dataUrl) {
+            if (state.imageProxyCache.size >= 100) {
+              const firstKey = state.imageProxyCache.keys().next().value;
+              if (firstKey) state.imageProxyCache.delete(firstKey);
+            }
             state.imageProxyCache.set(src, dataUrl);
             img.src = dataUrl;
             img.style.display = '';

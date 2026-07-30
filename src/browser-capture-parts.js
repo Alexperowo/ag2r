@@ -81,8 +81,9 @@ export const PORTALS_CAPTURE_SCRIPT = `
     let maxHeight = 0;
     for (const el of allSidebars) {
       if (el.offsetParent !== null) {
-        const h = el.getBoundingClientRect().height;
-        if (h > maxHeight) { maxHeight = h; leftRoot = el; }
+        const rect = el.getBoundingClientRect();
+        if (rect.left > 200 || rect.height < 100) continue; // Exclude right sidebars and horizontal headers
+        if (rect.height > maxHeight) { maxHeight = rect.height; leftRoot = el; }
       }
     }
     if (leftRoot) {
@@ -115,11 +116,15 @@ export const PORTALS_CAPTURE_SCRIPT = `
   let dialogHtml = null;
   try {
     for (const child of document.body.children) {
-      if (child.id || child.tagName === 'SCRIPT' || child.tagName === 'STYLE') continue;
+      if (child.id === 'root' || child.id === 'a11y-live-announcer' || child.tagName === 'SCRIPT' || child.tagName === 'STYLE') continue;
       const text = child.textContent.trim();
       if (!text) continue;
 
-      if (!dropdownHtml && child.getAttribute('role') === 'listbox') {
+      if (!dropdownHtml && (
+        child.getAttribute('role') === 'listbox' || 
+        child.getAttribute('role') === 'presentation' ||
+        child.querySelector('[role="listbox"], [role="menu"], [role="presentation"]')
+      )) {
         const tagged = tagInteractives(child, 'dropdown', true, false);
         const clone = child.cloneNode(true);
         untagAll(tagged);

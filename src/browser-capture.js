@@ -10,8 +10,10 @@ export const CAPTURE_SCRIPT = `
   ${TAGGER_SCRIPT}
 
   let container =
+    document.querySelector('[data-testid="conversation-view"] .scrollbar-hide[class*="overflow-y-auto"]') ||
     document.querySelector('.scrollbar-hide[class*="overflow-y-auto"]') ||
-    document.querySelector('[data-testid="conversation-view"]') ||
+    document.querySelector('main [class*="overflow-y-auto"]') ||
+    document.querySelector('.prose')?.parentElement ||
     document.getElementById('conversation') ||
     document.getElementById('chat') ||
     document.getElementById('cascade');

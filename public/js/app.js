@@ -8,6 +8,9 @@ import { initComment } from './modules/comment.js';
 import { initAuth } from './modules/auth.js';
 import { initMisc } from './modules/misc.js';
 import { initPowerControl } from './modules/power.js';
+import { initArtifactViewer } from './modules/artifact.js';
+import { isTtsEnabled, setTtsEnabled } from './modules/tts.js';
+import { initSTT } from './modules/stt.js';
 import { state } from './modules/state.js';
 import { fetchAPI, track } from './modules/api.js';
 import {
@@ -37,6 +40,25 @@ window.addEventListener('unhandledrejection', (e) => {
   const msg = e.reason?.message || String(e.reason || '');
   track('client_error', { message: msg.substring(0, 200) });
 });
+
+let audioUnlocked = false;
+const unlockAudio = () => {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  const silentWav = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+  const audio = new Audio(silentWav);
+  audio.play().catch(() => {});
+  
+  if ('speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance('');
+    utterance.volume = 0;
+    window.speechSynthesis.speak(utterance);
+  }
+};
+['click', 'touchstart', 'pointerdown'].forEach(evt => {
+  document.body.addEventListener(evt, unlockAudio, { once: true });
+});
+
 
 // Setup backdrop and overlay controls
 dropdownBackdrop?.addEventListener('click', () => {
@@ -108,6 +130,23 @@ async function submitTextInput() {
   }
 }
 
+
+// Setup TTS Toggle button in Header
+const ttsBtn = document.getElementById('tts-toggle-btn');
+if (ttsBtn) {
+  const updateTtsBtn = () => {
+    const enabled = isTtsEnabled();
+    ttsBtn.style.color = enabled ? '#38bdf8' : '#64748b';
+    ttsBtn.title = enabled ? 'Voice Output: ON' : 'Voice Output: OFF';
+  };
+  updateTtsBtn();
+  ttsBtn.addEventListener('click', () => {
+    setTtsEnabled(!isTtsEnabled());
+    updateTtsBtn();
+    if (navigator.vibrate) navigator.vibrate(40);
+  });
+}
+
 textInputCancel?.addEventListener('click', closeTextInput);
 textInputBackdrop?.addEventListener('click', closeTextInput);
 textInputSubmit?.addEventListener('click', submitTextInput);
@@ -127,7 +166,9 @@ initSidebar();
 initInput();
 initAttach();
 initComment();
+initArtifactViewer();
 initAuth();
 initMisc();
 initPowerControl();
+initSTT();
 updateActionButton();

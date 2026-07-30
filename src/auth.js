@@ -1,4 +1,6 @@
 import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import cookieParser from 'cookie-parser';
 import { state } from './state.js';
 import { APP_PASSWORD, SESSION_SECRET, AUTH_ENABLED } from './config.js';
@@ -177,7 +179,7 @@ export function registerAuthRoutes(app) {
         await new Promise(r => setTimeout(r, 1500));
       }
 
-      const authUrlFile = '/tmp/ag2r_pending_auth_url';
+      const authUrlFile = path.join(os.tmpdir(), 'ag2r_pending_auth_url');
       try { fs.unlinkSync(authUrlFile); } catch {}
 
       const clickResult = await evaluateInBrowser(`

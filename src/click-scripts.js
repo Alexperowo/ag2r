@@ -52,7 +52,11 @@ export function makeClickScript(clickId, label) {
       }
     } else if (source === 'dropdown') {
       for (const child of document.body.children) {
-        if (child.getAttribute('role') === 'listbox' && child.textContent.trim()) {
+        if (child.textContent.trim() && (
+          child.getAttribute('role') === 'listbox' ||
+          child.getAttribute('role') === 'presentation' ||
+          child.querySelector('[role="listbox"], [role="menu"], [role="presentation"]')
+        )) {
           root = child;
           break;
         }

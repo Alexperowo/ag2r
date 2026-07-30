@@ -51,12 +51,11 @@ export function initMisc() {
   });
 
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', () => {
-      document.body.style.height = window.visualViewport.height + 'px';
-    });
-    window.visualViewport.addEventListener('scroll', () => {
-      document.body.style.height = window.visualViewport.height + 'px';
-    });
+    const updateVh = () => {
+      document.documentElement.style.setProperty('--vh', `${window.visualViewport.height * 0.01}px`);
+    };
+    window.visualViewport.addEventListener('resize', updateVh);
+    updateVh();
   }
 
   document.addEventListener('visibilitychange', () => {
@@ -69,5 +68,5 @@ export function initMisc() {
     if (document.visibilityState === 'visible') {
       loadSnapshot();
     }
-  }, 5000);
+  }, 15000);
 }

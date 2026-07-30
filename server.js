@@ -26,6 +26,7 @@ import { registerApiRoutes } from './src/routes-api.js';
 import { registerClickRoute } from './src/route-click.js';
 import { registerSendRoute } from './src/route-send.js';
 import { registerMiscRoutes } from './src/routes-misc.js';
+import { registerArtifactRoute } from './src/route-artifact.js';
 import { track, startSession, endSession } from './src/telemetry.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -75,6 +76,7 @@ registerApiRoutes(app);
 registerClickRoute(app);
 registerSendRoute(app);
 registerMiscRoutes(app);
+registerArtifactRoute(app);
 
 async function start() {
   let server;

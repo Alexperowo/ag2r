@@ -56,8 +56,12 @@ export function initPowerControl() {
       console.error('[Power] Request error:', err.message);
     } finally {
       isPendingRequest = false;
-      // Immediately refresh status
-      await checkPowerStatus();
+      try {
+        await checkPowerStatus();
+      } catch (e) {
+        console.debug('[Power] Post-action status check failed:', e.message);
+      }
+      agPowerBtn.classList.remove('loading');
     }
   });
 }

@@ -2,8 +2,33 @@ import { state } from './state.js';
 import { loadSnapshot } from './snapshot.js';
 import { updateConnectionStatus } from './misc.js';
 import { updateActionButton } from './input.js';
+import { speakText, extractCleanText } from './tts.js';
 
 let wsReconnectDelay = 1000;
+
+function handleAgentRunningChange(newRunning) {
+  if (state.agentRunning === newRunning) return;
+  const wasRunning = state.agentRunning;
+  state.agentRunning = newRunning;
+  updateActionButton();
+  const isOnNewSession = !!document.getElementById('ag2r-new-session-input');
+  const quickActions = document.getElementById('quick-actions');
+  quickActions?.classList.toggle('hidden', state.agentRunning || isOnNewSession);
+
+  if (wasRunning && !state.agentRunning) {
+    setTimeout(() => {
+      const bubbles = document.querySelectorAll('#chat-content [role="article"][aria-label="Agent response"]');
+      const lastBubble = bubbles[bubbles.length - 1];
+      if (lastBubble) {
+        const text = extractCleanText(lastBubble);
+        if (text && text.length > 3) {
+          speakText(text);
+        }
+      }
+    }, 1000);
+
+  }
+}
 
 export function connectWebSocket() {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -28,22 +53,13 @@ export function connectWebSocket() {
             loadSnapshot();
           }
           if (data.agentRunning !== undefined) {
-            state.agentRunning = data.agentRunning;
-            updateActionButton();
-            // Don't show quick actions on new session page (it has its own input)
-            const isOnNewSession = !!document.getElementById('ag2r-new-session-input');
-            const quickActions = document.getElementById('quick-actions');
-            quickActions?.classList.toggle('hidden', state.agentRunning || isOnNewSession);
+            handleAgentRunningChange(data.agentRunning);
           }
           break;
 
         case 'status':
           if (data.agentRunning !== undefined) {
-            state.agentRunning = data.agentRunning;
-            updateActionButton();
-            const isOnNewSession = !!document.getElementById('ag2r-new-session-input');
-            const quickActions = document.getElementById('quick-actions');
-            quickActions?.classList.toggle('hidden', state.agentRunning || isOnNewSession);
+            handleAgentRunningChange(data.agentRunning);
           }
           break;
 

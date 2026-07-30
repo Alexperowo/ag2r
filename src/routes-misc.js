@@ -1,6 +1,8 @@
+import fs from 'fs';
 import multer from 'multer';
 import { exec } from 'child_process';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 import { state } from './state.js';
 import { MAX_UPLOAD_SIZE } from './config.js';
@@ -78,6 +80,21 @@ export function registerMiscRoutes(app) {
     } catch (e) {
       console.debug('[DismissSettings] Error:', e.message);
       res.json({ ok: false, error: e.message });
+    }
+  });
+
+  app.post('/api/close-tab', async (req, res) => {
+    if (!state.cdpClient) return res.status(503).json({ error: 'CDP not connected' });
+    try {
+      await evaluateInBrowser(`
+        const overviewTab = document.querySelector('[data-tab-id="overview"]');
+        if (overviewTab) {
+          overviewTab.click();
+        }
+      `);
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
     }
   });
 
@@ -188,12 +205,14 @@ export function registerMiscRoutes(app) {
     }
   });
 
-  app.post('/eval', async (req, res) => {
-    try {
-      const result = await evaluateInBrowser(`${req.body.script}`);
-      res.json({ result });
-    } catch (e) { res.json({ error: e.message }); }
-  });
+  if (process.env.DEV_MODE === 'true') {
+    app.post('/eval', async (req, res) => {
+      try {
+        const result = await evaluateInBrowser(`${req.body.script}`);
+        res.json({ result });
+      } catch (e) { res.json({ error: e.message }); }
+    });
+  }
 
   app.get('/discover', async (req, res) => {
     if (!state.cdpClient) {
@@ -219,34 +238,7 @@ export function registerMiscRoutes(app) {
     });
   });
 
-  app.get('/api/antigravity/status', (req, res) => {
-    exec('systemctl is-active antigravity-gui.service', (error, stdout) => {
-      const status = stdout.trim();
-      res.json({
-        ok: true,
-        status: status,
-        running: status === 'active'
-      });
-    });
-  });
 
-  app.post('/api/antigravity/sleep', (req, res) => {
-    exec('sudo systemctl stop antigravity-gui.service', (error) => {
-      if (error) {
-        return res.status(500).json({ ok: false, error: error.message });
-      }
-      res.json({ ok: true, message: 'Antigravity is going to sleep' });
-    });
-  });
-
-  app.post('/api/antigravity/wakeup', (req, res) => {
-    exec('sudo systemctl start antigravity-gui.service', (error) => {
-      if (error) {
-        return res.status(500).json({ ok: false, error: error.message });
-      }
-      res.json({ ok: true, message: 'Antigravity is waking up' });
-    });
-  });
 
   // --- Client Telemetry Endpoint ---
   app.post('/telemetry', (req, res) => {
@@ -293,5 +285,38 @@ export function registerMiscRoutes(app) {
       return res.status(400).json({ error: err.message });
     }
     next(err);
+  });
+
+  app.post('/speak', async (req, res) => {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ error: 'no text' });
+    const candidatePaths = [
+      process.env.TTS_SCRIPT_PATH,
+      path.join(__dirname, 'speak.py'),
+      path.join(os.homedir(), '.gemini', 'antigravity', 'tts', 'speak.py'),
+      path.join(os.homedir(), '.gemini', 'antigravity', 'brain', '56deceb7-eb8b-4e8f-9213-46aaee40ab29', 'scratch', 'speak.py'),
+    ].filter(Boolean);
+
+    let pyScript = candidatePaths.find(p => fs.existsSync(p));
+    if (!pyScript) {
+      log('Speak', 'No speak.py script found in candidate paths');
+      return res.status(404).json({ error: 'speak.py script not found' });
+    }
+    try {
+        const { exec } = await import('child_process');
+        const util = await import('util');
+        const execAsync = util.promisify(exec);
+        const pyCmd = process.env.PYTHON_CMD || (process.platform === 'win32' ? 'py' : 'python3');
+        const { stdout } = await execAsync(`${pyCmd} "${pyScript}" "${text.replace(/"/g, '\\"')}"`);
+        const audioFile = stdout.trim().split('\\n').pop();
+        if (audioFile && audioFile.length > 5) {
+            res.sendFile(audioFile);
+        } else {
+            res.status(500).json({ error: 'No audio generated' });
+        }
+    } catch (e) {
+        console.error('[Speak] Error', e);
+        res.status(500).json({ error: e.message });
+    }
   });
 }

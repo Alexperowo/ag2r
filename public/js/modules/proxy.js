@@ -178,6 +178,10 @@ export function addClickProxyHandlers(container) {
       }
       el.classList.remove('ag-clicking');
 
+      window.userRequestedArtifact = true;
+      if (window.userRequestedArtifactTimeout) clearTimeout(window.userRequestedArtifactTimeout);
+      window.userRequestedArtifactTimeout = setTimeout(() => { window.userRequestedArtifact = false; }, 8000);
+
       if (result?.editorText !== undefined) {
         const messageInput = document.getElementById('message-input');
         if (messageInput) {
@@ -205,17 +209,7 @@ export function addClickProxyHandlers(container) {
         openRightSidebar();
       }
 
-      if (result?.navigatedToFile) {
-        openRightSidebar();
-      }
-
-      if (clickId.startsWith('chat:') && !result?.navigatedToFile) {
-        const elClass = (el.className || '').toString();
-        const isExpandable = /\d+\s+files?\s+changed/i.test(label);
-        if (el.tagName === 'DIV' && elClass.includes('cursor-pointer') && !isExpandable) {
-          openRightSidebar();
-        }
-      }
+      // Removed auto-openRightSidebar for navigatedToFile and chat DIVs to prevent intrusive popups
 
       if (clickId.startsWith('right:')) {
         setTimeout(fetchRightSidebar, 300);

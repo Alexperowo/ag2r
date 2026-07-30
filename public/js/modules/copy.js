@@ -18,10 +18,7 @@ export function addMobileCopyButtons() {
     if (pre.querySelector('.mobile-copy-btn')) return;
 
     const lines = pre.textContent.trim().split('\n');
-    if (lines.length <= 1) {
-      pre.classList.add('single-line-pre');
-      return;
-    }
+    if (lines.length <= 1) return;
 
     pre.style.position = 'relative';
     const btn = document.createElement('button');

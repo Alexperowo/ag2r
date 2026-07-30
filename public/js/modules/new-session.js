@@ -10,6 +10,16 @@ import {
   createVoiceInput
 } from './attach.js';
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 export function renderNewSessionPage(container, data) {
   const capturedHtml = data.html;
   let projectName = '';
@@ -22,22 +32,27 @@ export function renderNewSessionPage(container, data) {
   const environmentName = data.environmentName || '';
   const branchName = data.branchName || '';
 
+  const safeProjectName = escapeHtml(projectName);
+  const safeModelName = escapeHtml(modelName);
+  const safeEnvName = escapeHtml(environmentName);
+  const safeBranchName = escapeHtml(branchName);
+
   let envBarHtml = '';
-  if (environmentName) {
+  if (safeEnvName) {
     const envIcon = environmentName === 'Local'
       ? '<span class="material-symbols-rounded" style="font-size:14px">desktop_windows</span>'
       : '<span class="material-symbols-rounded" style="font-size:14px">account_tree</span>';
     envBarHtml = `
       <div class="ag2r-new-session-env-bar">
-        <button type="button" class="ag2r-env-chip" data-ag-click-id="env:0" data-ag-click-label="${environmentName}">
+        <button type="button" class="ag2r-env-chip" data-ag-click-id="env:0" data-ag-click-label="${safeEnvName}">
           ${envIcon}
-          <span>${environmentName}</span>
+          <span>${safeEnvName}</span>
           <span class="material-symbols-rounded" style="font-size:12px">expand_more</span>
         </button>
-        ${branchName ? `
-        <button type="button" class="ag2r-env-chip" data-ag-click-id="env:1" data-ag-click-label="${branchName}">
+        ${safeBranchName ? `
+        <button type="button" class="ag2r-env-chip" data-ag-click-id="env:1" data-ag-click-label="${safeBranchName}">
           <span class="material-symbols-rounded" style="font-size:14px">fork_right</span>
-          <span>${branchName}</span>
+          <span>${safeBranchName}</span>
           <span class="material-symbols-rounded" style="font-size:12px">expand_more</span>
         </button>
         ` : ''}
@@ -48,11 +63,11 @@ export function renderNewSessionPage(container, data) {
   container.innerHTML = `
     <div class="ag2r-new-session">
       <div class="ag2r-new-session-header">
-        ${projectName ? `<button type="button" class="ag2r-new-session-project" data-ag-click-id="project:0" data-ag-click-label="${projectName}">
+        ${safeProjectName ? `<button type="button" class="ag2r-new-session-project" data-ag-click-id="project:0" data-ag-click-label="${safeProjectName}">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 -960 960 960" fill="currentColor">
             <path d="M172.31-180Q142-180 121-201t-21-51.31V-707.69Q100-738 121-759t51.31-21H391.92l80,80H787.69Q818-700 839-679t21,51.31v375.38Q860-222 839-201t-51.31,21H172.31Z"/>
           </svg>
-          <span>${projectName}</span>
+          <span>${safeProjectName}</span>
           <span class="material-symbols-rounded" style="font-size:14px;opacity:0.6">expand_more</span>
         </button>` : ''}
       </div>
@@ -70,8 +85,8 @@ export function renderNewSessionPage(container, data) {
               <button type="button" id="ag2r-ns-attach" class="attach-btn" aria-label="Add context">
                 <span class="material-symbols-rounded">add</span>
               </button>
-              <button type="button" class="ag2r-ns-model-chip model-chip" data-ag-click-id="model:0" data-ag-click-label="${modelName}">
-                <span class="model-chip-text">${modelName}</span>
+              <button type="button" class="ag2r-ns-model-chip model-chip" data-ag-click-id="model:0" data-ag-click-label="${safeModelName}">
+                <span class="model-chip-text">${safeModelName}</span>
                 <span class="material-symbols-rounded model-chip-chevron">expand_more</span>
               </button>
             </div>

@@ -211,3 +211,31 @@
 .mobile-copy-btn.copied {
   color: var(--green);
 }
+
+/* Mobile TTS button for chat bubbles */
+.tts-play-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: pointer;
+  z-index: 2;
+  transition: color 0.15s, background 0.15s;
+}
+
+.tts-play-btn:active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.tts-play-btn .material-symbols-rounded {
+  font-size: 16px;
+}

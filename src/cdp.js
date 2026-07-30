@@ -13,10 +13,13 @@ export async function discoverTarget() {
       const targets = await CDP.List({ host: CDP_HOST, port });
       if (!targets || targets.length === 0) continue;
 
-      const workbench = targets.find(t =>
-        t.url?.includes('workbench.html') || t.title?.includes('workbench')
+      const mainTarget = targets.find(t =>
+        t.url?.includes('/c/') ||
+        t.url?.includes('workbench.html') ||
+        t.title?.includes('Antigravity') ||
+        t.title?.includes('workbench')
       );
-      if (workbench) return { port, target: workbench };
+      if (mainTarget) return { port, target: mainTarget };
 
       const jetski = targets.find(t =>
         t.url?.includes('jetski') || t.title === 'Launchpad'
