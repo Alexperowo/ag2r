@@ -59,27 +59,37 @@ export function registerSendRoute(app) {
           'button[data-testid="send-button"]',
           'button[aria-label*="send" i]',
           'button[aria-label*="submit" i]',
+          'button[aria-label*="queue" i]',
+          'button[aria-label*="add" i]',
         ];
 
         let submitBtn = null;
         for (const sel of submitSelectors) {
-          submitBtn = document.querySelector(sel);
-          if (submitBtn && submitBtn.offsetParent !== null) break;
-          submitBtn = null;
+          const btns = document.querySelectorAll(sel);
+          for (const btn of btns) {
+            const isStop = btn.querySelector('svg.lucide-square') ||
+                           (btn.getAttribute('aria-label') || '').toLowerCase().includes('stop') ||
+                           (btn.getAttribute('aria-label') || '').toLowerCase().includes('cancel') ||
+                           (btn.getAttribute('data-tooltip-id') || '').includes('cancel');
+            if (btn && btn.offsetParent !== null && !isStop) {
+              submitBtn = btn;
+              break;
+            }
+          }
+          if (submitBtn) break;
         }
 
         if (!submitBtn) {
-          const arrow = document.querySelector('svg.lucide-arrow-right, svg.lucide-arrow-up');
-          if (arrow) submitBtn = arrow.closest('button');
+          const arrow = document.querySelector('button svg.lucide-arrow-right, button svg.lucide-arrow-up, button svg.lucide-plus');
+          if (arrow) {
+            const btn = arrow.closest('button');
+            if (btn && btn.offsetParent !== null) submitBtn = btn;
+          }
         }
 
         if (!submitBtn) {
           const form = editor.closest('form');
-          if (form) submitBtn = form.querySelector('button[type="submit"], button:last-of-type');
-        }
-        if (!submitBtn) {
-          const parent = editor.parentElement;
-          if (parent) submitBtn = parent.querySelector('button');
+          if (form) submitBtn = form.querySelector('button[type="submit"]:not([aria-label*="cancel"]):not([aria-label*="stop"])');
         }
 
         if (submitBtn) {
