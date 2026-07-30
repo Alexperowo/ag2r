@@ -116,8 +116,9 @@ export function stopAllTts() {
   });
 }
 
-export async function speakText(text, activeBtn = null) {
-  if (!isTtsEnabled()) return;
+export async function speakText(text, activeBtn = null, force = false) {
+  // If auto-TTS is disabled and this was NOT an explicit button click, do nothing
+  if (!force && !activeBtn && !isTtsEnabled()) return;
 
   if (!text || text.length < 3) {
     console.warn('[TTS] Text too short:', text);
@@ -234,7 +235,7 @@ export function addTTSButtons(container) {
 
       const text = extractCleanText(bubble);
       if (text && text.length > 3) {
-        speakText(text, btn);
+        speakText(text, btn, true);
       }
     });
 

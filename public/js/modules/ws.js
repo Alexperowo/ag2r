@@ -2,7 +2,7 @@ import { state } from './state.js';
 import { loadSnapshot } from './snapshot.js';
 import { updateConnectionStatus } from './misc.js';
 import { updateActionButton } from './input.js';
-import { speakText, extractCleanText } from './tts.js';
+import { speakText, extractCleanText, isTtsEnabled } from './tts.js';
 
 let wsReconnectDelay = 1000;
 
@@ -15,7 +15,7 @@ function handleAgentRunningChange(newRunning) {
   const quickActions = document.getElementById('quick-actions');
   quickActions?.classList.toggle('hidden', state.agentRunning || isOnNewSession);
 
-  if (wasRunning && !state.agentRunning) {
+  if (wasRunning && !state.agentRunning && isTtsEnabled()) {
     setTimeout(() => {
       const bubbles = document.querySelectorAll('#chat-content [role="article"][aria-label="Agent response"]');
       const lastBubble = bubbles[bubbles.length - 1];
@@ -26,7 +26,6 @@ function handleAgentRunningChange(newRunning) {
         }
       }
     }, 1000);
-
   }
 }
 
