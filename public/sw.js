@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ag2r-cache-v3';
+const CACHE_NAME = 'ag2r-cache-v4';
 const urlsToCache = [
   '/',
   '/index.html',
