@@ -64,7 +64,7 @@ const unlockAudio = () => {
 dropdownBackdrop?.addEventListener('click', () => {
   state.overlayDismissedAt = Date.now();
   dropdownOverlay.classList.add('hidden');
-  fetchAPI('/dismiss-portal', { method: 'POST' }).catch(() => {});
+  fetchAPI('/dismiss-portal', { method: 'POST' }).catch(e => console.debug('[API] Portal dismiss failed:', e.message));
 });
 
 permissionBackdrop?.addEventListener('click', () => {
@@ -78,7 +78,7 @@ permissionBackdrop?.addEventListener('click', () => {
 
 settingsBack?.addEventListener('click', () => {
   settingsOverlay.classList.add('hidden');
-  fetchAPI('/dismiss-settings', { method: 'POST' }).catch(() => {});
+  fetchAPI('/dismiss-settings', { method: 'POST' }).catch(e => console.debug('[API] Settings dismiss failed:', e.message));
 });
 
 scheduledTasksBack?.addEventListener('click', async () => {

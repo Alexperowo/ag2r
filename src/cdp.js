@@ -156,7 +156,11 @@ export async function evaluateInBrowser(expression, opts = {}) {
           e.message.includes('Execution context was cleared')
         )
       ) {
-        log('CDP', `Context ${ctx.id} was destroyed/collected during evaluation. Assuming action succeeded.`);
+        log('CDP', `Context ${ctx.id} was destroyed/collected during evaluation. Assuming action succeeded and removing stale context.`);
+        // Explicitly remove stale context
+        state.cdpContexts = state.cdpContexts.filter(c => c.id !== ctx.id);
+        if (state.preferredContextId === ctx.id) state.preferredContextId = null;
+        
         return { ok: true, method: 'destroyed' };
       }
       continue;
@@ -192,7 +196,11 @@ export async function evaluateAcrossContexts(expression, opts = {}) {
           e.message.includes('Execution context was cleared')
         )
       ) {
-        log('CDP', `Context ${ctx.id} was destroyed/collected during evaluation across contexts. Assuming action succeeded.`);
+        log('CDP', `Context ${ctx.id} was destroyed/collected during evaluation across contexts. Assuming action succeeded and removing stale context.`);
+        // Explicitly remove stale context
+        state.cdpContexts = state.cdpContexts.filter(c => c.id !== ctx.id);
+        if (state.preferredContextId === ctx.id) state.preferredContextId = null;
+        
         return { ok: true, method: 'destroyed' };
       }
       continue;
