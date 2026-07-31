@@ -9,7 +9,8 @@ import {
   makeSchedClickScript,
   makeListboxClickScript,
   makeDlgClickScript,
-  makeClickScript
+  makeClickScript,
+  makePermClickScript
 } from '../cdp/scripts/click-scripts.js';
 
 export function registerClickRoute(app) {
@@ -67,6 +68,13 @@ export function registerClickRoute(app) {
 
         const result = await evaluateAcrossContexts(makeDlgClickScript(dlgIdx, label));
         log('Click', `SchedDlg result: ${JSON.stringify(result)}`);
+        return res.json(result || { ok: false, reason: 'null_result' });
+      }
+
+      if (String(clickId).startsWith('perm:')) {
+        const permIdx = parseInt(String(clickId).split(':')[1], 10);
+        const result = await evaluateAcrossContexts(makePermClickScript(permIdx, label));
+        log('Click', `Perm result: ${JSON.stringify(result)}`);
         return res.json(result || { ok: false, reason: 'null_result' });
       }
 

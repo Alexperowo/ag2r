@@ -127,3 +127,55 @@ export function makeDlgClickScript(dlgIdx, label) {
   })()
   `;
 }
+
+export function makePermClickScript(idx, label) {
+  const safeLabel = JSON.stringify(label || '');
+  return `
+  (() => {
+    const radioGroup = document.querySelector('[role="radiogroup"]');
+    if (!radioGroup) {
+      const allBtns = document.querySelectorAll('button');
+      for (const btn of allBtns) {
+        if (/^(Allow|Deny|Proceed)$/i.test((btn.textContent || '').trim())) {
+          btn.click();
+          return { ok: true, source: 'perm_fallback' };
+        }
+      }
+      return { ok: false, reason: 'no_radiogroup' };
+    }
+    
+    let banner = radioGroup;
+    for (let i = 0; i < 10; i++) {
+      if (!banner.parentElement || banner.parentElement === document.body) break;
+      banner = banner.parentElement;
+      if (/allow|permission/i.test(banner.textContent) && banner.querySelectorAll('button').length >= 1) break;
+    }
+    
+    const elements = [];
+    banner.querySelectorAll('[role="radiogroup"] label').forEach(el => elements.push(el));
+    banner.querySelectorAll('button').forEach(el => elements.push(el));
+    
+    const idx = ${idx};
+    const expectedLabel = ${safeLabel};
+    if (idx < 0 || idx >= elements.length) return { ok: false, reason: 'index_out_of_range', total: elements.length };
+    
+    let target = elements[idx];
+    const actualLabel = (target.textContent || '').trim().substring(0, 50);
+    
+    if (expectedLabel && actualLabel !== expectedLabel) {
+      let found = false;
+      for (const el of elements) {
+        if ((el.textContent || '').trim().substring(0, 50) === expectedLabel) {
+          target = el;
+          found = true;
+          break;
+        }
+      }
+      if (!found) return { ok: false, reason: 'label_mismatch', expected: expectedLabel, actual: actualLabel };
+    }
+    
+    target.click();
+    return { ok: true, label: (target.textContent || '').trim().substring(0, 50), source: 'perm' };
+  })()
+  `;
+}

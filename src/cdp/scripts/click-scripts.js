@@ -2,7 +2,8 @@ export {
   makeTaskClickScript,
   makeSchedClickScript,
   makeListboxClickScript,
-  makeDlgClickScript
+  makeDlgClickScript,
+  makePermClickScript
 } from './click-scripts-basic.js';
 
 export function makeClickScript(clickId, label) {
