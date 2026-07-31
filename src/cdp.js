@@ -153,15 +153,20 @@ export async function evaluateInBrowser(expression, opts = {}) {
         e.message && (
           e.message.includes('Promise was collected') ||
           e.message.includes('Execution context was destroyed') ||
-          e.message.includes('Execution context was cleared')
+          e.message.includes('Execution context was cleared') ||
+          e.message.includes('Cannot find context with specified id')
         )
       ) {
-        log('CDP', `Context ${ctx.id} was destroyed/collected during evaluation. Assuming action succeeded and removing stale context.`);
-        // Explicitly remove stale context
+        log('CDP', `Context ${ctx.id} was destroyed/collected. Removing stale context and trying next.`);
         state.cdpContexts = state.cdpContexts.filter(c => c.id !== ctx.id);
         if (state.preferredContextId === ctx.id) state.preferredContextId = null;
         
-        return { ok: true, method: 'destroyed' };
+        // If it's a click action that caused navigation, it might have succeeded.
+        // We will continue to try other contexts. If this was the last context, we will throw.
+        // We can return a special flag so the caller knows it MIGHT have succeeded.
+        if (sorted.indexOf(ctx) === sorted.length - 1) {
+          return { ok: true, method: 'destroyed_fallback' };
+        }
       }
       continue;
     }
@@ -193,15 +198,13 @@ export async function evaluateAcrossContexts(expression, opts = {}) {
         e.message && (
           e.message.includes('Promise was collected') ||
           e.message.includes('Execution context was destroyed') ||
-          e.message.includes('Execution context was cleared')
+          e.message.includes('Execution context was cleared') ||
+          e.message.includes('Cannot find context with specified id')
         )
       ) {
-        log('CDP', `Context ${ctx.id} was destroyed/collected during evaluation across contexts. Assuming action succeeded and removing stale context.`);
-        // Explicitly remove stale context
+        log('CDP', `Context ${ctx.id} was destroyed/collected across contexts. Removing stale context and trying next.`);
         state.cdpContexts = state.cdpContexts.filter(c => c.id !== ctx.id);
         if (state.preferredContextId === ctx.id) state.preferredContextId = null;
-        
-        return { ok: true, method: 'destroyed' };
       }
       continue;
     }
