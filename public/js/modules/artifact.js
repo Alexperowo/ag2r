@@ -20,9 +20,11 @@ export function initArtifactViewer() {
     if (artifactUri) {
       if (artifactUri.startsWith('artifact__')) artifactUri = artifactUri.replace('artifact__', '');
       e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
       openArtifact(artifactUri, target.textContent.trim());
     }
-  });
+  }, true);
 }
 
 export async function openArtifact(uri, titleHint = 'Artifact') {
