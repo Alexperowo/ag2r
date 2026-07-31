@@ -36,7 +36,7 @@ export function registerSendRoute(app) {
         for (const el of editorCandidates) {
           if (el.offsetParent !== null) editor = el;
         }
-        if (!editor) return { ok: false, reason: 'no_editor' };
+        if (!editor) throw new Error('no_editor'); // Throw so CDP continues to next context if in iframe
 
         editor.focus();
         document.execCommand('selectAll', false, null);

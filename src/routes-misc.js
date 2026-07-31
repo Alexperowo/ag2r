@@ -157,9 +157,18 @@ export function registerMiscRoutes(app) {
     log('Upload', `Received ${fileName} (${mimetype}, ${(buffer.length / 1024).toFixed(1)}KB)`);
 
     try {
+      // Send large files in chunks to avoid CDP WebSocket payload limits
+      await evaluateInBrowser('window.__ag2r_chunks = [];');
+      const chunkSize = 500 * 1024; // 500KB chunks
+      for (let i = 0; i < base64.length; i += chunkSize) {
+        const chunk = base64.substring(i, i + chunkSize);
+        await evaluateInBrowser(`window.__ag2r_chunks.push(${JSON.stringify(chunk)});`);
+      }
+
       const result = await evaluateInBrowser(`
       (async () => {
-        const base64 = ${JSON.stringify(base64)};
+        const base64 = window.__ag2r_chunks.join('');
+        window.__ag2r_chunks = null; // free memory
         const mimetype = ${JSON.stringify(mimetype)};
         const fileName = ${JSON.stringify(fileName)};
 
@@ -178,7 +187,7 @@ export function registerMiscRoutes(app) {
         for (const el of editorCandidates) {
           if (el.offsetParent !== null) editor = el;
         }
-        if (!editor) return { ok: false, reason: 'no_editor' };
+        if (!editor) throw new Error('no_editor'); // Throw so CDP continues to next context if in iframe
 
         const dt = new DataTransfer();
         dt.items.add(file);
