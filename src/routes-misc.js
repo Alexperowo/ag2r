@@ -157,12 +157,12 @@ export function registerMiscRoutes(app) {
     log('Upload', `Received ${fileName} (${mimetype}, ${(buffer.length / 1024).toFixed(1)}KB)`);
 
     try {
-      // Send large files in chunks to avoid CDP WebSocket payload limits
-      await evaluateInBrowser('window.__ag2r_chunks = [];');
+      // Send large files in chunks to avoid CDP WebSocket payload limits by injecting into ALL contexts
+      await evaluateAcrossContexts('window.__ag2r_chunks = [];');
       const chunkSize = 500 * 1024; // 500KB chunks
       for (let i = 0; i < base64.length; i += chunkSize) {
         const chunk = base64.substring(i, i + chunkSize);
-        await evaluateInBrowser(`window.__ag2r_chunks.push(${JSON.stringify(chunk)});`);
+        await evaluateAcrossContexts(`window.__ag2r_chunks.push(${JSON.stringify(chunk)});`);
       }
 
       const result = await evaluateInBrowser(`
