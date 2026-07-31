@@ -173,6 +173,26 @@ export async function speakText(text, activeBtn = null, force = false) {
     }
   }
 
+  // Case 1.5: Native TTS is speaking -> Toggle Pause/Resume
+  if (!_currentAudio && _currentBtn && _currentBtn === activeBtn && 'speechSynthesis' in window && window.speechSynthesis.speaking) {
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+      if (_currentBtn) {
+        const icon = _currentBtn.querySelector('.material-symbols-rounded');
+        if (icon) icon.textContent = 'pause';
+        _currentBtn.style.color = '#38bdf8';
+      }
+    } else {
+      window.speechSynthesis.pause();
+      if (_currentBtn) {
+        const icon = _currentBtn.querySelector('.material-symbols-rounded');
+        if (icon) icon.textContent = 'play_arrow';
+        _currentBtn.style.color = '#38bdf8';
+      }
+    }
+    return;
+  }
+
   // Case 3: New audio or starting fresh -> Stop previous and start new audio
   stopAllTts();
   _currentBtn = activeBtn;
