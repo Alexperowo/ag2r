@@ -12,34 +12,31 @@ export async function sendMessage() {
 
   state.isSending = true;
 
-  if (state.stopMainMic) state.stopMainMic();
+  try {
+    if (state.stopMainMic) state.stopMainMic();
 
-  if (hasImages) {
-    const uploadOk = await uploadStagedImages();
-    if (!uploadOk) {
-      console.debug('[Send] Some image uploads failed');
-      state.isSending = false;
-      messageInput.disabled = false;
-      actionBtn.disabled = false;
-      return;
+    if (hasImages) {
+      const uploadOk = await uploadStagedImages();
+      if (!uploadOk) {
+        console.debug('[Send] Some image uploads failed');
+        return;
+      }
+      clearStagedImages();
+      await new Promise(r => setTimeout(r, 300));
     }
-    clearStagedImages();
-    await new Promise(r => setTimeout(r, 300));
-  }
 
-  // Clear input only after we know uploads succeeded (if any)
-  messageInput.value = '';
-  messageInput.style.height = 'auto';
-  messageInput.disabled = true;
-  actionBtn.disabled = true;
-  messageInput.blur();
-  updateActionButton();
+    // Clear input only after we know uploads succeeded (if any)
+    messageInput.value = '';
+    messageInput.style.height = 'auto';
+    messageInput.disabled = true;
+    actionBtn.disabled = true;
+    messageInput.blur();
+    updateActionButton();
 
-  if (text || !hasImages) {
-    const commentBlock = drainQueuedComments();
-    const fullMessage = commentBlock ? commentBlock + '\n' + text : text;
+    if (text || !hasImages) {
+      const commentBlock = drainQueuedComments();
+      const fullMessage = commentBlock ? commentBlock + '\n' + text : text;
 
-    try {
       const res = await fetchAPI('/send', {
         method: 'POST',
         body: JSON.stringify({ message: fullMessage }),
@@ -47,20 +44,21 @@ export async function sendMessage() {
 
       const result = await res.json();
       console.debug('[Send] Result:', result);
-    } catch (e) {
-      console.debug('[Send] Error:', e.message);
     }
+
+    state.userScrolledAway = false;
+
+    setTimeout(loadSnapshot, 300);
+    setTimeout(loadSnapshot, 800);
+    setTimeout(loadSnapshot, 2000);
+
+  } catch (e) {
+    console.debug('[Send] Fatal Error:', e.message);
+  } finally {
+    state.isSending = false;
+    messageInput.disabled = false;
+    actionBtn.disabled = false;
   }
-
-  state.userScrolledAway = false;
-
-  setTimeout(loadSnapshot, 300);
-  setTimeout(loadSnapshot, 800);
-  setTimeout(loadSnapshot, 2000);
-
-  state.isSending = false;
-  messageInput.disabled = false;
-  actionBtn.disabled = false;
 }
 
 export async function stopGeneration() {

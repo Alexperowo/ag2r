@@ -16,8 +16,9 @@ async def generate_edge_tts(text, output_file):
 
 def generate_sapi_tts(text, output_file):
     """Fallback: Offline WAV generation via Windows SAPI using PowerShell."""
-    abs_path = os.path.abspath(output_file).replace("/", "\\")
-    escaped_text = text.replace("'", "''")
+    abs_path = os.path.abspath(output_file).replace("/", "\\\\")
+    text_clean = text.replace('\r', ' ').replace('\n', ' ')
+    escaped_text = text_clean.replace("'", "''")
     ps_cmd = f"Add-Type -AssemblyName System.Speech; $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer; $speak.SelectVoice('Microsoft Irina Desktop'); $speak.SetOutputToWaveFile('{abs_path}'); $speak.Speak('{escaped_text}'); $speak.Dispose();"
     try:
         subprocess.run(["powershell", "-Command", ps_cmd], check=True, capture_output=True)

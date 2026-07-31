@@ -162,78 +162,8 @@ export function renderRunningTasks(data) {
       const headerText = headerBtn ? headerBtn.textContent.trim() : '';
       runningTasksCount.textContent = headerText || 'Tasks running / queued';
 
-      const allButtons = tempDiv.querySelectorAll('[data-ag-click-id]');
-      let rowsHtml = '';
-      const buttonArray = Array.from(allButtons);
-
-      if (buttonArray.length >= 2) {
-        for (let i = 0; i < buttonArray.length; i += 2) {
-          const nameBtn = buttonArray[i];
-          const stopBtn = buttonArray[i + 1] || nameBtn;
-          const nameClickId = nameBtn?.dataset?.agClickId || '';
-          const nameLabel = nameBtn?.dataset?.agClickLabel || '';
-          const stopClickId = stopBtn?.dataset?.agClickId || '';
-          const stopLabel = stopBtn?.dataset?.agClickLabel || '';
-
-          const monoSpan = nameBtn?.querySelector('.font-mono');
-          const taskName = monoSpan ? monoSpan.textContent.trim() : (nameLabel || nameBtn.textContent.trim() || 'Task');
-
-          rowsHtml += `
-            <div class="running-task-row">
-              <button class="running-task-name" data-ag-click-id="${nameClickId}" data-ag-click-label="${nameLabel}">
-                <div class="running-task-spinner"></div>
-                <span>${taskName}</span>
-              </button>
-              ${stopClickId && stopClickId !== nameClickId ? `
-              <button class="running-task-stop" data-ag-click-id="${stopClickId}" data-ag-click-label="${stopLabel}" aria-label="Stop task">
-                <span class="material-symbols-rounded" style="font-size:18px">stop_circle</span>
-              </button>` : ''}
-            </div>
-          `;
-        }
-      } else if (buttonArray.length === 1) {
-        const btn = buttonArray[0];
-        const clickId = btn.dataset.agClickId || '';
-        const label = btn.dataset.agClickLabel || btn.textContent.trim();
-        rowsHtml = `
-          <div class="running-task-row">
-            <button class="running-task-name" data-ag-click-id="${clickId}" data-ag-click-label="${label}">
-              <div class="running-task-spinner"></div>
-              <span>${label}</span>
-            </button>
-          </div>
-        `;
-      }
-
-      if (rowsHtml) {
-        runningTasksList.innerHTML = rowsHtml;
-        runningTasksList.querySelectorAll('[data-ag-click-id]').forEach(btn => {
-          const clickId = btn.dataset.agClickId;
-          const clickLabel = btn.dataset.agClickLabel;
-          const isNameBtn = btn.classList.contains('running-task-name');
-          btn.removeAttribute('data-ag-click-id');
-          btn.addEventListener('click', async () => {
-            btn.style.opacity = '0.5';
-            btn.style.pointerEvents = 'none';
-            try {
-              await fetchAPI('/click', {
-                method: 'POST',
-                body: JSON.stringify({ clickId, label: clickLabel }),
-              });
-            } catch {}
-            if (isNameBtn) openRightSidebar();
-            setTimeout(() => {
-              btn.style.opacity = '';
-              btn.style.pointerEvents = '';
-            }, 500);
-            setTimeout(loadSnapshot, 300);
-            setTimeout(loadSnapshot, 1000);
-          });
-        });
-      } else {
-        runningTasksList.innerHTML = tempDiv.innerHTML;
-        addClickProxyHandlers(runningTasksList);
-      }
+      runningTasksList.innerHTML = tempDiv.innerHTML;
+      addClickProxyHandlers(runningTasksList);
 
       runningTasksList.classList.toggle('collapsed', state.runningTasksCollapsed);
       runningTasks.querySelector('.running-tasks-arrow')

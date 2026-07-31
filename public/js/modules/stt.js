@@ -29,57 +29,59 @@ export function initSTT() {
 
   let autoRestartCount = 0;
 
+  let sessionFinalTranscript = '';
+
   recognition.onstart = () => {
     isRecording = true;
-    autoRestartCount = 0;
+    sessionFinalTranscript = '';
     if (currentMicBtn) currentMicBtn.classList.add('recording');
     if (currentInput) {
+      currentInput.dataset.initialValue = currentInput.value;
       originalPlaceholder = currentInput.placeholder;
       currentInput.placeholder = 'Listening...';
     }
   };
 
   recognition.onresult = (event) => {
-    let transcripts = [];
-    for (let i = 0; i < event.results.length; ++i) {
-      let t = event.results[i][0].transcript.trim();
-      if (t) transcripts.push(t);
+    let interimStr = '';
+    let currentFinalStr = '';
+
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      let t = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        currentFinalStr += t;
+      } else {
+        interimStr += t;
+      }
     }
-    
-    // Clean up Android Chrome cumulative/duplicate bug
-    let finalStr = '';
-    for (let i = 0; i < transcripts.length; i++) {
-      let current = transcripts[i];
-      let isSubsumed = false;
-      
-      // Check if this transcript is subsumed by ANY subsequent transcript
-      for (let j = i + 1; j < transcripts.length; j++) {
-        let next = transcripts[j];
-        if (next.toLowerCase().startsWith(current.toLowerCase())) {
-          isSubsumed = true;
-          break;
+
+    // Android duplicate bug fix + Buffer flush fix
+    if (currentFinalStr) {
+      let cF = currentFinalStr.trim().toLowerCase();
+      let sF = sessionFinalTranscript.trim().toLowerCase();
+
+      // If the new final string starts with the old final string, the browser is cumulative.
+      // E.g. old = "hello", new = "hello world". We should just replace it.
+      if (sF && cF.startsWith(sF)) {
+        sessionFinalTranscript = currentFinalStr;
+      } else {
+        // Otherwise, it's new text (buffer flushed or normal appending).
+        if (sessionFinalTranscript && !sessionFinalTranscript.endsWith(' ') && !currentFinalStr.startsWith(' ')) {
+          sessionFinalTranscript += ' ';
         }
-      }
-      
-      if (!isSubsumed) {
-        if (finalStr.length > 0) finalStr += ' ';
-        finalStr += current;
+        sessionFinalTranscript += currentFinalStr;
       }
     }
-    
+
     if (currentInput) {
-      // Append a space if there's already text and it doesn't end with space
       let prefix = currentInput.dataset.initialValue || '';
       if (prefix && !prefix.endsWith(' ')) prefix += ' ';
-      
-      const combined = prefix + finalStr;
+
+      const combined = (prefix + sessionFinalTranscript + (sessionFinalTranscript && !sessionFinalTranscript.endsWith(' ') && interimStr && !interimStr.startsWith(' ') ? ' ' : '') + interimStr);
       currentInput.value = combined;
       
-      // Auto-resize if it's a textarea
       currentInput.style.height = 'auto';
       currentInput.style.height = Math.min(currentInput.scrollHeight, 120) + 'px';
-      
-      // Trigger input event for any listeners (like updateActionButton)
       currentInput.dispatchEvent(new Event('input', { bubbles: true }));
     }
   };

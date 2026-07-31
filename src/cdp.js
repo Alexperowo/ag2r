@@ -157,15 +157,16 @@ export async function evaluateInBrowser(expression, opts = {}) {
           e.message.includes('Cannot find context with specified id')
         )
       ) {
-        log('CDP', `Context ${ctx.id} was destroyed/collected. Removing stale context and trying next.`);
+        log('CDP', `Context ${ctx.id} was destroyed/collected. Removing stale context.`);
         state.cdpContexts = state.cdpContexts.filter(c => c.id !== ctx.id);
         if (state.preferredContextId === ctx.id) state.preferredContextId = null;
         
-        // If it's a click action that caused navigation, it might have succeeded.
-        // We will continue to try other contexts. If this was the last context, we will throw.
-        // We can return a special flag so the caller knows it MIGHT have succeeded.
-        if (sorted.indexOf(ctx) === sorted.length - 1) {
-          return { ok: true, method: 'destroyed_fallback' };
+        if (e.message.includes('Cannot find context with specified id')) {
+          // Context was dead before execution started. Try next.
+          continue;
+        } else {
+          // Context died during execution (likely because our click() succeeded and caused navigation).
+          return { ok: true, method: 'destroyed_during_execution' };
         }
       }
       continue;

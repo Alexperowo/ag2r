@@ -312,12 +312,12 @@ export function registerMiscRoutes(app) {
       return res.status(404).json({ error: 'speak.py script not found' });
     }
     try {
-        const { exec } = await import('child_process');
+        const { execFile } = await import('child_process');
         const util = await import('util');
-        const execAsync = util.promisify(exec);
+        const execFileAsync = util.promisify(execFile);
         const pyCmd = process.env.PYTHON_CMD || (process.platform === 'win32' ? 'py' : 'python3');
-        const { stdout } = await execAsync(`${pyCmd} "${pyScript}" "${text.replace(/"/g, '\\"')}"`);
-        const audioFile = stdout.trim().split('\\n').pop();
+        const { stdout } = await execFileAsync(pyCmd, [pyScript, text]);
+        const audioFile = stdout.trim().split('\n').pop();
         if (audioFile && audioFile.length > 5) {
             res.sendFile(audioFile);
         } else {

@@ -1,11 +1,37 @@
 export function makeTaskClickScript(taskIdx) {
   return `
   (() => {
-    const inputBox = document.getElementById('antigravity.agentSidePanelInputBox');
-    if (!inputBox) return { ok: false, reason: 'no_input_box' };
-    const taskSection = inputBox.querySelector('.rounded-t-2xl');
+    let taskSection = null;
+    const candidates = [...document.querySelectorAll('div, section, aside')].filter(el => {
+      const t = (el.textContent || '').toLowerCase();
+      const h = el.getBoundingClientRect().height;
+      return (t.includes('queued') || t.includes('running task') || t.includes('tasks running') || t.includes('send anyway')) && h > 10 && h < 300;
+    });
+
+    if (candidates.length > 0) {
+      candidates.sort((a, b) => a.querySelectorAll('*').length - b.querySelectorAll('*').length);
+      taskSection = candidates[0];
+      for (let i = 0; i < 3; i++) {
+        if (taskSection.parentElement && taskSection.parentElement.getBoundingClientRect().height < 300 && taskSection.parentElement.querySelector('button')) {
+          taskSection = taskSection.parentElement;
+        } else {
+          break;
+        }
+      }
+    }
+
+    if (!taskSection) {
+      const inputBox = document.getElementById('antigravity.agentSidePanelInputBox');
+      if (inputBox) {
+        taskSection = inputBox.querySelector('[class*="rounded-t-2xl"]') ||
+                      inputBox.querySelector('[data-testid="running-tasks-container"]') ||
+                      document.querySelector('[data-testid*="queue"]');
+      }
+    }
+
     if (!taskSection) return { ok: false, reason: 'no_task_section' };
-    const btns = taskSection.querySelectorAll('button');
+
+    const btns = taskSection.querySelectorAll('button, a, [role="button"], input, span');
     const idx = ${taskIdx};
     if (idx < 0 || idx >= btns.length) return { ok: false, reason: 'task_index_out_of_range', total: btns.length };
     const target = btns[idx];

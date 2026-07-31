@@ -2,38 +2,33 @@ import { TAGGER_SCRIPT } from './browser-tagger.js';
 
 export const RUNNING_TASKS_SCRIPT = `
 (() => {
-  const inputBox = document.getElementById('antigravity.agentSidePanelInputBox');
-  let taskSection = inputBox ? (inputBox.querySelector('.rounded-t-2xl') || inputBox.querySelector('[class*="rounded-t"]')) : null;
-  
-  if (!taskSection) {
-    taskSection = document.querySelector('[class*="rounded-t-2xl"]') ||
-                  document.querySelector('[data-testid="running-tasks-container"]') ||
-                  document.querySelector('[data-testid*="queue"]') ||
-                  document.querySelector('[aria-label="Running tasks"]') ||
-                  document.querySelector('[aria-label*="Queue" i]') ||
-                  document.querySelector('[class*="queued"]') ||
-                  document.querySelector('[class*="pending-messages"]');
-  }
+  let taskSection = null;
 
-  if (!taskSection && inputBox) {
-    for (const child of inputBox.children) {
-      if (child.querySelector('textarea, [contenteditable="true"]')) continue;
-      if (child.getBoundingClientRect().height > 5) {
-        taskSection = child;
+  const candidates = [...document.querySelectorAll('div, section, aside')].filter(el => {
+    const t = (el.textContent || '').toLowerCase();
+    const h = el.getBoundingClientRect().height;
+    return (t.includes('queued') || t.includes('running task') || t.includes('tasks running') || t.includes('send anyway')) && h > 10 && h < 300;
+  });
+
+  if (candidates.length > 0) {
+    candidates.sort((a, b) => a.querySelectorAll('*').length - b.querySelectorAll('*').length);
+    taskSection = candidates[0];
+    
+    for (let i = 0; i < 3; i++) {
+      if (taskSection.parentElement && taskSection.parentElement.getBoundingClientRect().height < 300 && taskSection.parentElement.querySelector('button')) {
+        taskSection = taskSection.parentElement;
+      } else {
         break;
       }
     }
   }
 
   if (!taskSection) {
-    const allDivs = document.querySelectorAll('div');
-    for (const div of allDivs) {
-      const text = (div.textContent || '').toLowerCase();
-      if ((text.includes('queued') || text.includes('running task') || text.includes('tasks running')) && 
-          div.getBoundingClientRect().height > 10 && div.getBoundingClientRect().height < 400) {
-        taskSection = div;
-        break;
-      }
+    const inputBox = document.getElementById('antigravity.agentSidePanelInputBox');
+    if (inputBox) {
+      taskSection = inputBox.querySelector('[class*="rounded-t-2xl"]') ||
+                    inputBox.querySelector('[data-testid="running-tasks-container"]') ||
+                    document.querySelector('[data-testid*="queue"]');
     }
   }
 
