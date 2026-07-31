@@ -4,14 +4,14 @@ import { exec } from 'child_process';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
-import { state } from './state.js';
-import { MAX_UPLOAD_SIZE } from './config.js';
-import { log } from './utils.js';
-import { evaluateInBrowser, evaluateAcrossContexts } from './cdp.js';
-import { track, readEvents } from './telemetry.js';
+import { state } from '../state.js';
+import { MAX_UPLOAD_SIZE } from '../config.js';
+import { log } from '../utils.js';
+import { evaluateInBrowser, evaluateAcrossContexts } from '../cdp.js';
+import { track, readEvents } from '../telemetry.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-import { DISCOVER_SCRIPT } from './discover-script.js';
+import { DISCOVER_SCRIPT } from '../cdp/scripts/discover-script.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),

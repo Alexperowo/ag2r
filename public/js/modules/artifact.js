@@ -10,7 +10,7 @@ export function initArtifactViewer() {
 
   // Intercept click on any artifact link or button in the chat or sidebar
   document.body.addEventListener('click', (e) => {
-    const target = e.target.closest('[data-ag-artifact], [data-tab-id*="artifact__"], a[href*="artifact"]');
+    const target = e.target.closest('[data-ag-artifact], [data-tab-id*="artifact__"], a[href*="brain"], a[href$=".md"]');
     if (!target) return;
 
     let artifactUri = target.getAttribute('data-ag-artifact') ||

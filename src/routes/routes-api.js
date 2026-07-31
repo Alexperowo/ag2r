@@ -1,9 +1,9 @@
 import express from 'express';
-import { state } from './state.js';
-import { log } from './utils.js';
-import { evaluateInBrowser } from './cdp.js';
-import { RIGHT_SIDEBAR_SCRIPT, STOP_SCRIPT } from './capture-scripts.js';
-import { track } from './telemetry.js';
+import { state } from '../state.js';
+import { log } from '../utils.js';
+import { evaluateInBrowser } from '../cdp.js';
+import { RIGHT_SIDEBAR_SCRIPT, STOP_SCRIPT } from '../cdp/scripts/capture-scripts.js';
+import { track } from '../telemetry.js';
 
 export function registerApiRoutes(app) {
   app.get('/snapshot', (req, res) => {

@@ -1,16 +1,16 @@
-import { state } from './state.js';
-import { log, hashString } from './utils.js';
-import { evaluateInBrowser, evaluateAcrossContexts } from './cdp.js';
-import { captureSnapshot } from './snapshot.js';
-import { broadcast } from './broadcast.js';
-import { track } from './telemetry.js';
+import { state } from '../state.js';
+import { log, hashString } from '../utils.js';
+import { evaluateInBrowser, evaluateAcrossContexts } from '../cdp.js';
+import { captureSnapshot } from '../snapshot.js';
+import { broadcast } from '../broadcast.js';
+import { track } from '../telemetry.js';
 import {
   makeTaskClickScript,
   makeSchedClickScript,
   makeListboxClickScript,
   makeDlgClickScript,
   makeClickScript
-} from './click-scripts.js';
+} from '../cdp/scripts/click-scripts.js';
 
 export function registerClickRoute(app) {
   app.post('/click', async (req, res) => {

@@ -2,12 +2,12 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import cookieParser from 'cookie-parser';
-import { state } from './state.js';
-import { APP_PASSWORD, SESSION_SECRET, AUTH_ENABLED } from './config.js';
-import { authToken, log } from './utils.js';
-import { broadcast } from './broadcast.js';
-import { evaluateInBrowser } from './cdp.js';
-import { track } from './telemetry.js';
+import { state } from '../state.js';
+import { APP_PASSWORD, SESSION_SECRET, AUTH_ENABLED } from '../config.js';
+import { authToken, log } from '../utils.js';
+import { broadcast } from '../broadcast.js';
+import { evaluateInBrowser } from '../cdp.js';
+import { track } from '../telemetry.js';
 
 const PUBLIC_PATHS = ['/login', '/login.html', '/favicon.ico', '/internal/auth-url', '/health'];
 

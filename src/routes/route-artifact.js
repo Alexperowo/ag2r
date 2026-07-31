@@ -2,9 +2,9 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { state } from './state.js';
-import { log } from './utils.js';
-import { evaluateInBrowser } from './cdp.js';
+import { state } from '../state.js';
+import { log } from '../utils.js';
+import { evaluateInBrowser } from '../cdp.js';
 
 export function registerArtifactRoute(app) {
   app.get('/api/artifact-content', async (req, res) => {

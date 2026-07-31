@@ -5,8 +5,6 @@ import { createServer as createHttpServer } from 'http';
 import { WebSocketServer } from 'ws';
 import cookieParser from 'cookie-parser';
 import compression from 'compression';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
 import {
   PORT,
@@ -21,15 +19,8 @@ import { log, ensureCerts, authToken } from './src/utils.js';
 import { connectCDP, scheduleReconnect } from './src/cdp.js';
 import { startPolling, stopPolling } from './src/snapshot.js';
 import { broadcast, broadcastStatus } from './src/broadcast.js';
-import { authMiddleware, registerAuthRoutes } from './src/auth.js';
-import { registerApiRoutes } from './src/routes-api.js';
-import { registerClickRoute } from './src/route-click.js';
-import { registerSendRoute } from './src/route-send.js';
-import { registerMiscRoutes } from './src/routes-misc.js';
-import { registerArtifactRoute } from './src/route-artifact.js';
+import { registerRoutes } from './src/routes/index.js';
 import { track, startSession, endSession } from './src/telemetry.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 app.use(compression());
@@ -52,31 +43,8 @@ if (TUNNEL_ENABLED) {
   app.set('trust proxy', true);
 }
 
-// Mount Auth Middleware
-app.use(authMiddleware);
-
-// Static files (no cache in dev)
-app.use(express.static(path.join(__dirname, 'public'), {
-  etag: false,
-  lastModified: false,
-  setHeaders: (res) => {
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-  },
-}));
-
-// Fallback for symbols/icons
-const EMPTY_SVG = '<svg xmlns="http://www.w3.org/2000/svg"/>';
-app.get('/symbols-icons/*', (req, res) => {
-  res.type('svg').send(EMPTY_SVG);
-});
-
-// Register routes
-registerAuthRoutes(app);
-registerApiRoutes(app);
-registerClickRoute(app);
-registerSendRoute(app);
-registerMiscRoutes(app);
-registerArtifactRoute(app);
+// Register routes and auth middleware
+registerRoutes(app);
 
 async function start() {
   let server;

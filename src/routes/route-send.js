@@ -1,7 +1,7 @@
-import { state } from './state.js';
-import { log } from './utils.js';
-import { evaluateInBrowser } from './cdp.js';
-import { track } from './telemetry.js';
+import { state } from '../state.js';
+import { log } from '../utils.js';
+import { evaluateInBrowser } from '../cdp.js';
+import { track } from '../telemetry.js';
 
 export function registerSendRoute(app) {
   let lastSentMessage = { text: '', time: 0 };
