@@ -14,13 +14,6 @@ export async function sendMessage() {
 
   if (state.stopMainMic) state.stopMainMic();
 
-  messageInput.value = '';
-  messageInput.style.height = 'auto';
-  messageInput.disabled = true;
-  actionBtn.disabled = true;
-  messageInput.blur();
-  updateActionButton();
-
   if (hasImages) {
     const uploadOk = await uploadStagedImages();
     if (!uploadOk) {
@@ -33,6 +26,14 @@ export async function sendMessage() {
     clearStagedImages();
     await new Promise(r => setTimeout(r, 300));
   }
+
+  // Clear input only after we know uploads succeeded (if any)
+  messageInput.value = '';
+  messageInput.style.height = 'auto';
+  messageInput.disabled = true;
+  actionBtn.disabled = true;
+  messageInput.blur();
+  updateActionButton();
 
   if (text || !hasImages) {
     const commentBlock = drainQueuedComments();
