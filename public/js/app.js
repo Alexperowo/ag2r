@@ -131,6 +131,31 @@ async function submitTextInput() {
 }
 
 
+// Setup Zoom Toggle
+const zoomBtn = document.getElementById('zoom-toggle-btn');
+if (zoomBtn) {
+  const ZOOM_LEVELS = [1.0, 1.15, 1.30, 1.45];
+  let currentZoomIdx = parseInt(localStorage.getItem('ag2r_zoom_idx') || '0');
+  if (isNaN(currentZoomIdx) || currentZoomIdx >= ZOOM_LEVELS.length) currentZoomIdx = 0;
+  
+  const applyZoom = () => {
+    const zoom = ZOOM_LEVELS[currentZoomIdx];
+    // Use zoom property on body to scale the entire UI natively
+    document.body.style.zoom = zoom;
+    zoomBtn.style.color = currentZoomIdx > 0 ? '#38bdf8' : '#64748b';
+    zoomBtn.title = `Zoom: ${Math.round(zoom * 100)}%`;
+  };
+  
+  applyZoom();
+  
+  zoomBtn.addEventListener('click', () => {
+    currentZoomIdx = (currentZoomIdx + 1) % ZOOM_LEVELS.length;
+    localStorage.setItem('ag2r_zoom_idx', currentZoomIdx.toString());
+    applyZoom();
+    if (navigator.vibrate) navigator.vibrate(20);
+  });
+}
+
 // Setup TTS Toggle button in Header
 const ttsBtn = document.getElementById('tts-toggle-btn');
 if (ttsBtn) {
