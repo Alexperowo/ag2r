@@ -160,12 +160,12 @@ export function makePermClickScript(idx, label) {
     if (idx < 0 || idx >= elements.length) return { ok: false, reason: 'index_out_of_range', total: elements.length };
     
     let target = elements[idx];
-    const actualLabel = (target.textContent || '').trim().substring(0, 50);
+    const actualLabel = (target.textContent || '').replace(/↵/g, '').trim().substring(0, 50);
     
     if (expectedLabel && actualLabel !== expectedLabel) {
       let found = false;
       for (const el of elements) {
-        if ((el.textContent || '').trim().substring(0, 50) === expectedLabel) {
+        if ((el.textContent || '').replace(/↵/g, '').trim().substring(0, 50) === expectedLabel) {
           target = el;
           found = true;
           break;
