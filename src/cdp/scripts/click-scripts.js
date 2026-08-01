@@ -58,6 +58,55 @@ export function makeClickScript(clickId, label) {
                settingsOverlay.querySelector('[class*="rounded-2xl"]') ||
                settingsOverlay;
       }
+    } else if (source === 'dropdown') {
+      for (const child of document.body.children) {
+        if (child.getAttribute('role') === 'listbox' && child.textContent.trim()) {
+          root = child;
+          break;
+        }
+      }
+    } else if (source === 'dialog') {
+      for (const child of document.body.children) {
+        const cls = child.className || '';
+        if (cls.includes('fixed') && cls.includes('inset-0')) {
+          root = child;
+          break;
+        }
+        if (!root && child.getAttribute('role') === 'dialog') {
+          root = child;
+        }
+      }
+    } else if (source === 'env') {
+      const selectors = [
+        '[aria-label="Select Environment"]',
+        '[aria-label="Select Default Branch"]'
+      ];
+      if (idx >= 0 && idx < selectors.length) {
+        const target = document.querySelector(selectors[idx]);
+        if (target) {
+          const actualLabel = (target.textContent || '').trim().substring(0, 50);
+          target.click();
+          return { ok: true, label: actualLabel, source: 'env' };
+        }
+        return { ok: false, reason: 'env_button_not_found', idx };
+      }
+      return { ok: false, reason: 'env_index_out_of_range' };
+    } else if (source === 'model') {
+      const target = document.querySelector('[aria-label*="Select model"]');
+      if (target) {
+        const actualLabel = (target.textContent || '').trim().substring(0, 50);
+        target.click();
+        return { ok: true, label: actualLabel, source: 'model' };
+      }
+      return { ok: false, reason: 'model_button_not_found' };
+    } else if (source === 'project') {
+      const target = document.querySelector('[aria-haspopup="dialog"]');
+      if (target) {
+        const actualLabel = (target.textContent || '').trim().substring(0, 50);
+        target.click();
+        return { ok: true, label: actualLabel, source: 'project' };
+      }
+      return { ok: false, reason: 'project_button_not_found' };
     }
 
     if (!root) return { ok: false, reason: 'no_root_for_' + source };

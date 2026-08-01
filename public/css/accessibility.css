@@ -109,7 +109,7 @@ select:focus-visible,
 }
 
 /* Ensure minimum touch target size (44x44px per WCAG) */
-button,
+button:not(.tts-play-btn),
 .icon-btn,
 .action-btn,
 .attach-btn,
