@@ -6,12 +6,10 @@ import { APP_PASSWORD } from './config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+import crypto from 'crypto';
+
 export function hashString(str) {
-  let hash = 5381;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) + hash) + str.charCodeAt(i);
-  }
-  return (hash >>> 0).toString(36);
+  return crypto.createHash('sha256').update(str).digest('hex').substring(0, 16);
 }
 
 export function authToken() {

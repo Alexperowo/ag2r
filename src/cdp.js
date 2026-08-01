@@ -5,6 +5,17 @@ import { log } from './utils.js';
 import { broadcast, broadcastStatus } from './broadcast.js';
 import { track } from './telemetry.js';
 
+const withTimeout = (promise, ms) => {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error('CDP evaluation timeout')), ms);
+  });
+  return Promise.race([
+    promise.finally(() => clearTimeout(timeoutId)),
+    timeoutPromise
+  ]);
+};
+
 export async function discoverTarget() {
   const ports = [CDP_PORT, CDP_PORT + 1, CDP_PORT + 2, CDP_PORT + 3];
 
@@ -132,13 +143,13 @@ export async function evaluateInBrowser(expression, opts = {}) {
 
   for (const ctx of sorted) {
     try {
-      const result = await state.cdpClient.Runtime.evaluate({
+      const result = await withTimeout(state.cdpClient.Runtime.evaluate({
         expression,
         contextId: ctx.id,
         awaitPromise: true,
         returnByValue: true,
         ...opts,
-      });
+      }), 2000);
 
       if (result.exceptionDetails) {
         console.debug('[CDP] Eval exception in context', ctx.id, result.exceptionDetails.text, JSON.stringify(result.exceptionDetails.exception || {}).substring(0, 200));
@@ -181,13 +192,13 @@ export async function evaluateAcrossContexts(expression, opts = {}) {
 
   for (const ctx of state.cdpContexts) {
     try {
-      const result = await state.cdpClient.Runtime.evaluate({
+      const result = await withTimeout(state.cdpClient.Runtime.evaluate({
         expression,
         contextId: ctx.id,
         awaitPromise: true,
         returnByValue: true,
         ...opts,
-      });
+      }), 2000);
 
       if (result.exceptionDetails) continue;
 

@@ -43,6 +43,28 @@ if (TUNNEL_ENABLED) {
   app.set('trust proxy', true);
 }
 
+// --- Basic Rate Limiting ---
+const rateLimits = new Map();
+const RL_WINDOW_MS = 60 * 1000;
+const RL_MAX_REQ = 100;
+app.use((req, res, next) => {
+  if (req.method === 'POST' && ['/login', '/click', '/send', '/eval'].includes(req.path)) {
+    const ip = req.ip || req.connection.remoteAddress;
+    const now = Date.now();
+    if (!rateLimits.has(ip)) {
+      rateLimits.set(ip, []);
+    }
+    const timestamps = rateLimits.get(ip).filter(t => now - t < RL_WINDOW_MS);
+    if (timestamps.length >= RL_MAX_REQ) {
+      log('Security', `Rate limit exceeded for IP: ${ip} on path ${req.path}`);
+      return res.status(429).json({ error: 'Too many requests, please try again later.' });
+    }
+    timestamps.push(now);
+    rateLimits.set(ip, timestamps);
+  }
+  next();
+});
+
 // Register routes and auth middleware
 registerRoutes(app);
 
@@ -90,8 +112,10 @@ async function start() {
       log('WS', `Client disconnected (${state.wsClients.size} total)`);
     });
 
-    ws.on('error', () => {
+    ws.on('error', (err) => {
+      console.debug('[WS] Error:', err.message);
       state.wsClients.delete(ws);
+      ws.terminate();
     });
   });
 
