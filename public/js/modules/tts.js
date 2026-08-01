@@ -136,45 +136,44 @@ export async function speakText(text, activeBtn = null, force = false) {
     return;
   }
 
+  const isSameAudio = (_currentText === text) || (activeBtn && activeBtn === _currentBtn);
+
   // Case 1: Audio is currently PLAYING -> PAUSE IT!
   if (_currentAudio && !_currentAudio.paused && !_currentAudio.ended) {
-    try {
-      _currentAudio.pause();
-      if (_currentBtn) {
-        const icon = _currentBtn.querySelector('.material-symbols-rounded');
-        if (icon) icon.textContent = 'play_arrow';
-        _currentBtn.style.color = '#38bdf8';
+    if (isSameAudio) {
+      try {
+        _currentAudio.pause();
+        if (_currentBtn) {
+          const icon = _currentBtn.querySelector('.material-symbols-rounded');
+          if (icon) icon.textContent = 'play_arrow';
+          _currentBtn.style.color = '#38bdf8';
+        }
+        return;
+      } catch (e) {
+        console.debug('[TTS] Pause error:', e.message);
       }
-      if (activeBtn && activeBtn !== _currentBtn) {
-        const icon = activeBtn.querySelector('.material-symbols-rounded');
-        if (icon) icon.textContent = 'play_arrow';
-        activeBtn.style.color = '#38bdf8';
-        _currentBtn = activeBtn;
-      }
-      return;
-    } catch (e) {
-      console.debug('[TTS] Pause error:', e.message);
     }
   }
 
   // Case 2: Audio is currently PAUSED -> RESUME IT!
   if (_currentAudio && _currentAudio.paused && !_currentAudio.ended) {
-    try {
-      _currentBtn = activeBtn || _currentBtn;
-      await _currentAudio.play();
-      if (_currentBtn) {
-        const icon = _currentBtn.querySelector('.material-symbols-rounded');
-        if (icon) icon.textContent = 'pause';
-        _currentBtn.style.color = '#38bdf8';
+    if (isSameAudio) {
+      try {
+        await _currentAudio.play();
+        if (_currentBtn) {
+          const icon = _currentBtn.querySelector('.material-symbols-rounded');
+          if (icon) icon.textContent = 'pause';
+          _currentBtn.style.color = '#38bdf8';
+        }
+        return;
+      } catch (e) {
+        console.debug('[TTS] Resume error:', e.message);
       }
-      return;
-    } catch (e) {
-      console.debug('[TTS] Resume error:', e.message);
     }
   }
 
   // Case 1.5: Native TTS is speaking -> Toggle Pause/Resume
-  if (!_currentAudio && _currentBtn && _currentBtn === activeBtn && 'speechSynthesis' in window && window.speechSynthesis.speaking) {
+  if (!_currentAudio && isSameAudio && 'speechSynthesis' in window && window.speechSynthesis.speaking) {
     if (window.speechSynthesis.paused) {
       window.speechSynthesis.resume();
       if (_currentBtn) {

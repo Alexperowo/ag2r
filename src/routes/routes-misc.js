@@ -301,7 +301,7 @@ export function registerMiscRoutes(app) {
     if (!text) return res.status(400).json({ error: 'no text' });
     const candidatePaths = [
       process.env.TTS_SCRIPT_PATH,
-      path.join(__dirname, 'speak.py'),
+      path.join(__dirname, '..', 'speak.py'),
       path.join(os.homedir(), '.gemini', 'antigravity', 'tts', 'speak.py'),
       path.join(os.homedir(), '.gemini', 'antigravity', 'brain', '56deceb7-eb8b-4e8f-9213-46aaee40ab29', 'scratch', 'speak.py'),
     ].filter(Boolean);
