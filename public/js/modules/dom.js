@@ -5,6 +5,19 @@ export const emptyState = document.getElementById('empty-state');
 export const scrollFab = document.getElementById('scroll-fab');
 export const messageInput = document.getElementById('message-input');
 export const actionBtn = document.getElementById('action-btn');
+export function animateIcon(iconEl, newIconName) {
+  if (!iconEl) return;
+  iconEl.style.transform = 'scale(0) rotate(180deg)';
+  setTimeout(() => {
+    iconEl.textContent = newIconName;
+    iconEl.style.transform = 'scale(1) rotate(0)';
+  }, 150);
+}
+
+export function announce(message) {
+  const el = document.getElementById('announcer');
+  if (el) el.textContent = message;
+}
 export const actionIcon = document.getElementById('action-icon');
 export const connectionDot = document.getElementById('connection-status');
 export const sidebarToggle = document.getElementById('sidebar-toggle');
