@@ -14,6 +14,7 @@ import selfsigned from 'selfsigned';
 import multer from 'multer';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
+import rateLimit from 'express-rate-limit';
 
 dotenv.config();
 
@@ -1050,6 +1051,17 @@ app.use(express.static(path.join(__dirname, 'public'), {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   },
 }));
+
+// --- Rate Limiting (prevent brute force on auth and actions) ---
+const limiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes default
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use(limiter);
 
 // --- Catch-all for AG2.0 local asset paths (symbols-icons, etc.) ---
 const EMPTY_SVG = '<svg xmlns="http://www.w3.org/2000/svg"/>';
