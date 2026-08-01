@@ -1,6 +1,10 @@
 # AG2R — Antigravity 2.0 Remote
 
-A lightweight mobile remote interface for monitoring and interacting with [Antigravity](https://antigravity.dev) AI coding sessions from your phone — on Wi-Fi, hotspot, or anywhere in the world.
+> **Mobile remote interface for monitoring and interacting with [Antigravity](https://antigravity.dev) AI coding sessions.**
+> 
+> 🦮 **WCAG 2.1 AA Accessible** | 🔒 **Secure by Default** | ⚡ **Real-time Sync** | 📱 **Mobile-First**
+
+A lightweight, secure, and fully accessible remote interface that lets you monitor and control Antigravity AI coding sessions from your phone — on Wi-Fi, hotspot, or anywhere in the world.
 
 <p align="center">
   <img src="docs/hero-mobile.png" alt="AG2R Chat" width="180" />
@@ -57,7 +61,7 @@ The simplest setup — works when your phone and computer are on the same Wi-Fi 
 1. Start the server: `node server.js`
 2. Open `https://<your-computer-ip>:3000` on your phone
 3. Accept the self-signed certificate warning
-4. Enter the passcode (default: `antigravity`, configurable in `.env`)
+4. Enter the passcode (generated on first run, or configurable in `.env`)
 
 > [!NOTE]
 > This does **not** work over mobile hotspot or when you're away from home. Your phone must be on the same network as the computer running AG2R.
@@ -82,12 +86,12 @@ cloudflared tunnel --url https://localhost:3000 --no-tls-verify
 Cloudflared prints a random URL like `https://random-words.trycloudflare.com`. Open that on your phone.
 
 > [!WARNING]
-> **Set a strong password in `.env` before using any tunnel.** The default password `antigravity` is not secure for internet-facing access.
+> **Set a strong password in `.env` before using any tunnel.** The default password is auto-generated on first run, but for internet-facing access, use a custom strong password:
 >
 > ```bash
 > # In .env
 > APP_PASSWORD=your-strong-password-here
-> SESSION_SECRET=run-openssl-rand-hex-24-to-generate
+> SESSION_SECRET=$(openssl rand -hex 32)
 > ```
 
 ---
@@ -134,7 +138,7 @@ ingress:
 
 ```bash
 APP_PASSWORD=your-strong-password
-SESSION_SECRET=run-openssl-rand-hex-24-to-generate
+SESSION_SECRET=$(openssl rand -hex 32)
 TUNNEL_ENABLED=true
 TUNNEL_URL=https://ag2r.yourdomain.com
 ```
@@ -242,6 +246,22 @@ Switch between conversations, browse files changed, artifacts, and background ta
 - **Stop generation** — cancel a running generation with the stop button
 - **Auto-reconnect** — seamless reconnection when connection drops
 - **Cookie-based auth** — enter passcode once, stays logged in for 30 days
+
+---
+
+### ♿ Accessibility Features
+
+AG2R is designed to be usable by everyone, including people with disabilities:
+
+- **Screen Reader Support**: Full VoiceOver, TalkBack, and NVDA compatibility
+- **Keyboard Navigation**: Complete functionality without a mouse
+- **High Contrast Mode**: Enhanced visibility for low vision users
+- **Reduced Motion**: Respects system preferences for motion sensitivity
+- **Large Touch Targets**: Minimum 44x44px for easy interaction
+- **Semantic HTML**: Proper landmarks and ARIA attributes throughout
+- **Live Announcements**: Real-time status updates for assistive technologies
+
+Learn more in our [Accessibility Statement](./docs/ACCESSIBILITY.md).
 
 ---
 

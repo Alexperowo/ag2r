@@ -1,5 +1,18 @@
-node_modules/
-certs/
-.env
+```
+# Logs and temp files
 *.log
-.DS_Store
+*.tmp
+*.swp
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+
+# Dependencies
+node_modules/
+```

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="description" content="AG2R — Mobile remote interface for Antigravity AI coding sessions">
+  <meta name="description" content="AG2R — Mobile remote interface for Antigravity AI coding sessions with accessibility features">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="icon" type="image/png" href="/favicon.png">
@@ -11,7 +11,7 @@
   <link rel="manifest" href="/manifest.json">
   <meta name="apple-mobile-web-app-title" content="AG2R">
   <meta name="theme-color" content="#090e17">
-  <title>AG2R</title>
+  <title>AG2R — Accessible Remote Interface</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -19,60 +19,64 @@
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <div id="app" class="app">
+  <!-- Skip Links for Accessibility -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <a href="#message-input" class="skip-link">Skip to message input</a>
+  
+  <div id="app" class="app" role="application" aria-label="AG2R Remote Interface">
 
     <!-- Header — minimal, AG's captured components handle sidebar toggles -->
-    <header id="header" class="header">
-      <button id="sidebar-toggle" class="icon-btn" aria-label="Toggle sidebar">
+    <header id="header" class="header" role="banner" aria-label="Application header">
+      <button id="sidebar-toggle" class="icon-btn" aria-label="Toggle sidebar" aria-expanded="false" aria-controls="left-sidebar">
         <span class="material-symbols-rounded">menu</span>
       </button>
-      <img src="/ag2r-icon.png" alt="AG2R" class="header-icon" width="32" height="32">
+      <img src="/ag2r-icon.png" alt="" class="header-icon" width="32" height="32" aria-hidden="true">
       <h1 class="header-title">AG2R</h1>
-      <div id="connection-status" class="connection-dot" data-status="disconnected" title="Disconnected"></div>
-      <button id="review-toggle" class="icon-btn" aria-label="Toggle review panel" title="Review">
+      <div id="connection-status" class="connection-dot" data-status="disconnected" title="Disconnected" aria-label="Connection status: disconnected" role="status"></div>
+      <button id="review-toggle" class="icon-btn" aria-label="Toggle review panel" title="Review" aria-expanded="false" aria-controls="right-sidebar">
         <span class="material-symbols-rounded">right_panel_open</span>
       </button>
     </header>
 
     <!-- Left Sidebar — receives AG's captured sidebar content -->
-    <aside id="left-sidebar" class="left-sidebar" inert>
+    <aside id="left-sidebar" class="left-sidebar" inert aria-hidden="true" role="navigation" aria-label="Conversation navigation">
       <style id="left-sidebar-cdp-styles"></style>
       <div id="left-sidebar-content" class="sidebar-fill"></div>
     </aside>
-    <div id="left-sidebar-overlay" class="sidebar-overlay"></div>
+    <div id="left-sidebar-overlay" class="sidebar-overlay" aria-hidden="true"></div>
 
     <!-- Right Sidebar — receives AG's captured review panel content -->
-    <aside id="right-sidebar" class="right-sidebar" inert>
+    <aside id="right-sidebar" class="right-sidebar" inert aria-hidden="true" role="complementary" aria-label="Review panel">
       <style id="right-sidebar-cdp-styles"></style>
       <div id="right-sidebar-content" class="sidebar-fill"></div>
     </aside>
-    <div id="right-sidebar-overlay" class="sidebar-overlay"></div>
+    <div id="right-sidebar-overlay" class="sidebar-overlay" aria-hidden="true"></div>
 
     <!-- Chat Area -->
-    <main id="chat-area" class="chat-area">
-      <style id="cdp-styles"></style>
-      <div id="chat-content" class="chat-content"></div>
-      <div id="empty-state" class="empty-state">
-        <span class="material-symbols-rounded empty-icon">chat_bubble_outline</span>
+    <main id="chat-area" class="chat-area" role="main" aria-label="Chat conversation">
+      <div id="main-content" class="visually-hidden">Main content</div>
+      <div id="chat-content" class="chat-content" role="log" aria-live="polite" aria-relevant="additions" aria-label="Chat messages"></div>
+      <div id="empty-state" class="empty-state" role="status" aria-live="polite">
+        <span class="material-symbols-rounded empty-icon" aria-hidden="true">chat_bubble_outline</span>
         <p class="empty-title">No active chat</p>
         <p class="empty-subtitle">Waiting for Antigravity connection...</p>
       </div>
     </main>
 
     <!-- Scroll-to-bottom FAB -->
-    <button id="scroll-fab" class="scroll-fab" aria-label="Scroll to bottom">
-      <span class="material-symbols-rounded">keyboard_arrow_down</span>
+    <button id="scroll-fab" class="scroll-fab" aria-label="Scroll to bottom" aria-hidden="false">
+      <span class="material-symbols-rounded" aria-hidden="true">keyboard_arrow_down</span>
     </button>
 
     <!-- Quick-action shortcuts -->
-    <div id="quick-actions" class="quick-actions">
-      <button class="quick-action-chip" data-message="Continue">Continue</button>
+    <div id="quick-actions" class="quick-actions" role="group" aria-label="Quick actions">
+      <button class="quick-action-chip" data-message="Continue" type="button">Continue</button>
     </div>
 
     <!-- Input Bar -->
-    <footer id="input-bar" class="input-bar">
+    <footer id="input-bar" class="input-bar" role="contentinfo" aria-label="Message input">
       <div class="input-wrapper">
-        <div id="image-preview-strip" class="image-preview-strip hidden"></div>
+        <div id="image-preview-strip" class="image-preview-strip hidden" role="list" aria-label="Attached images"></div>
         <textarea
           id="message-input"
           class="message-input"
@@ -82,24 +86,25 @@
           autocorrect="on"
           autocapitalize="sentences"
           enterkeyhint="enter"
+          aria-label="Type your message"
         ></textarea>
         <div class="input-controls">
           <div class="input-left-actions">
             <input type="file" id="photo-input" accept="image/*" capture="environment" multiple hidden>
             <button id="attach-btn" class="attach-btn" type="button" aria-label="Add context">
-              <span class="material-symbols-rounded">add</span>
+              <span class="material-symbols-rounded" aria-hidden="true">add</span>
             </button>
-            <button id="model-chip" class="model-chip" type="button" data-ag-click-id="model:0" data-ag-click-label="">
+            <button id="model-chip" class="model-chip" type="button" data-ag-click-id="model:0" data-ag-click-label="" aria-haspopup="true" aria-expanded="false">
               <span class="model-chip-text"></span>
-              <span class="material-symbols-rounded model-chip-chevron">expand_more</span>
+              <span class="material-symbols-rounded model-chip-chevron" aria-hidden="true">expand_more</span>
             </button>
           </div>
           <div class="input-right-actions">
-            <button id="mic-btn" class="mic-btn" aria-label="Voice input" type="button">
-              <span class="material-symbols-rounded mic-icon">mic</span>
+            <button id="mic-btn" class="mic-btn" aria-label="Voice input" type="button" aria-pressed="false">
+              <span class="material-symbols-rounded mic-icon" aria-hidden="true">mic</span>
             </button>
-            <button id="action-btn" class="action-btn" data-action="send" aria-label="Send message">
-              <span class="material-symbols-rounded action-icon" id="action-icon">arrow_upward</span>
+            <button id="action-btn" class="action-btn" data-action="send" aria-label="Send message" type="button">
+              <span class="material-symbols-rounded action-icon" id="action-icon" aria-hidden="true">arrow_upward</span>
             </button>
           </div>
         </div>
@@ -107,63 +112,66 @@
     </footer>
 
     <!-- Dropdown overlay for AG portal menus (conversation options etc.) -->
-    <div id="dropdown-overlay" class="dropdown-overlay hidden">
-      <div id="dropdown-backdrop" class="dropdown-backdrop"></div>
-      <div id="dropdown-content" class="dropdown-content"></div>
+    <div id="dropdown-overlay" class="dropdown-overlay hidden" role="dialog" aria-modal="true" aria-hidden="true">
+      <div id="dropdown-backdrop" class="dropdown-backdrop" aria-hidden="true"></div>
+      <div id="dropdown-content" class="dropdown-content" role="menu"></div>
     </div>
     <!-- Permission banner overlay -->
-    <div id="permission-overlay" class="permission-overlay hidden">
-      <div id="permission-backdrop" class="permission-backdrop"></div>
-      <div id="permission-content" class="permission-content"></div>
+    <div id="permission-overlay" class="permission-overlay hidden" role="alertdialog" aria-modal="true" aria-hidden="true">
+      <div id="permission-backdrop" class="permission-backdrop" aria-hidden="true"></div>
+      <div id="permission-content" class="permission-content" role="document"></div>
     </div>
     <!-- Settings full-screen overlay -->
-    <div id="settings-overlay" class="settings-overlay hidden">
+    <div id="settings-overlay" class="settings-overlay hidden" role="dialog" aria-modal="true" aria-hidden="true">
       <div class="settings-header">
-        <button id="settings-back" class="settings-back-btn" aria-label="Back">
-          <span class="material-symbols-rounded">arrow_back</span>
+        <button id="settings-back" class="settings-back-btn" aria-label="Back to previous screen">
+          <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
         </button>
         <span class="settings-title">Settings</span>
       </div>
-      <div id="settings-content" class="settings-content"></div>
+      <div id="settings-content" class="settings-content" role="form"></div>
     </div>
     <!-- Floating comment button (appears on text selection in right sidebar) -->
-    <button id="comment-fab" class="comment-fab hidden" aria-label="Add comment">
-      <span class="material-symbols-rounded">add_comment</span>
+    <button id="comment-fab" class="comment-fab hidden" aria-label="Add comment" type="button">
+      <span class="material-symbols-rounded" aria-hidden="true">add_comment</span>
     </button>
 
     <!-- Comment input modal -->
-    <div id="comment-modal" class="comment-modal hidden">
-      <div id="comment-modal-backdrop" class="dropdown-backdrop"></div>
+    <div id="comment-modal" class="comment-modal hidden" role="dialog" aria-modal="true" aria-labelledby="comment-modal-title" aria-hidden="true">
+      <div id="comment-modal-backdrop" class="dropdown-backdrop" aria-hidden="true"></div>
       <div class="comment-modal-content">
-        <div class="comment-modal-header">
-          <span class="material-symbols-rounded" style="font-size:20px;color:var(--accent)">comment</span>
+        <div class="comment-modal-header" id="comment-modal-title">
+          <span class="material-symbols-rounded" style="font-size:20px;color:var(--accent)" aria-hidden="true">comment</span>
           <span>Add Comment</span>
         </div>
-        <div id="comment-selection-preview" class="comment-selection-preview"></div>
-        <textarea id="comment-input" class="comment-input" placeholder="Type your comment..." rows="3"></textarea>
+        <div id="comment-selection-preview" class="comment-selection-preview" aria-live="polite"></div>
+        <textarea id="comment-input" class="comment-input" placeholder="Type your comment..." rows="3" aria-label="Comment text"></textarea>
         <div class="comment-modal-actions">
-          <button id="comment-cancel" class="comment-action-btn cancel">Cancel</button>
-          <button id="comment-submit" class="comment-action-btn submit">Add Comment</button>
+          <button id="comment-cancel" class="comment-action-btn cancel" type="button">Cancel</button>
+          <button id="comment-submit" class="comment-action-btn submit" type="button">Add Comment</button>
         </div>
       </div>
     </div>
 
     <!-- Comment review modal (view/edit/delete queued comments) -->
-    <div id="comment-review-modal" class="comment-modal hidden">
-      <div id="comment-review-backdrop" class="dropdown-backdrop"></div>
+    <div id="comment-review-modal" class="comment-modal hidden" role="dialog" aria-modal="true" aria-labelledby="comment-review-title" aria-hidden="true">
+      <div id="comment-review-backdrop" class="dropdown-backdrop" aria-hidden="true"></div>
       <div class="comment-review-content">
-        <div class="comment-modal-header">
-          <span class="material-symbols-rounded" style="font-size:20px;color:#6366f1">reviews</span>
+        <div class="comment-modal-header" id="comment-review-title">
+          <span class="material-symbols-rounded" style="font-size:20px;color:#6366f1" aria-hidden="true">reviews</span>
           <span>Queued Comments</span>
         </div>
-        <div id="comment-review-list" class="comment-review-list"></div>
+        <div id="comment-review-list" class="comment-review-list" role="list" aria-live="polite"></div>
         <div class="comment-modal-actions">
-          <button id="comment-review-close" class="comment-action-btn cancel">Close</button>
-          <button id="comment-review-clear" class="comment-action-btn cancel" style="color:#f87171">Clear All</button>
-          <button id="comment-review-send" class="comment-action-btn submit">Send All</button>
+          <button id="comment-review-close" class="comment-action-btn cancel" type="button">Close</button>
+          <button id="comment-review-clear" class="comment-action-btn cancel" style="color:#f87171" type="button">Clear All</button>
+          <button id="comment-review-send" class="comment-action-btn submit" type="button">Send All</button>
         </div>
       </div>
     </div>
+
+    <!-- Live region for announcements -->
+    <div id="announcer" class="visually-hidden" aria-live="assertive" aria-atomic="true"></div>
 
   </div>
 

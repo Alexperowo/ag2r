@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════
    AG2R — Mobile-First Styles
    Matches Antigravity 2.0 dark theme
+   Accessibility enhancements for users with visual impairments
    ═══════════════════════════════════════════════ */
 
 /* ── Design Tokens (from AG's resolved theme) ── */
@@ -43,6 +44,11 @@
 
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
+
+  /* Accessibility: Focus styles */
+  --focus-ring-color: rgba(0, 122, 204, 0.6);
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 2px;
 }
 
 /* ── Reset ── */
@@ -1770,3 +1776,196 @@ body {
 .comment-review-actions button.delete:hover { color: #f87171; }
 
 #comment-badge span { cursor: pointer; }
+
+/* ═══════════════════════════════════════════════
+   Accessibility Enhancements
+   For users with visual impairments
+   ═══════════════════════════════════════════════ */
+
+/* Skip Links - visible on focus for keyboard navigation */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  z-index: 10000;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 10px;
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Visually hidden but accessible to screen readers */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus styles for all interactive elements */
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Enhanced focus for buttons */
+.icon-btn:focus-visible,
+.action-btn:focus-visible,
+.attach-btn:focus-visible,
+.mic-btn:focus-visible,
+.quick-action-chip:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+  box-shadow: 0 0 0 4px rgba(0, 122, 204, 0.2);
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --text-primary: #ffffff;
+    --text-secondary: #e0e0e0;
+    --border: #444444;
+    --focus-ring-color: #ffffff;
+  }
+  
+  .icon-btn,
+  .action-btn,
+  .attach-btn {
+    border: 1px solid currentColor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .sidebar-overlay,
+  .dropdown-overlay,
+  .permission-overlay {
+    transition: none;
+  }
+}
+
+/* Large text support */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    /* Allow user scaling up to 200% */
+    text-size-adjust: 100%;
+  }
+}
+
+/* Ensure minimum touch target size (44x44px per WCAG) */
+button,
+.icon-btn,
+.action-btn,
+.attach-btn,
+.mic-btn,
+.quick-action-chip,
+.scroll-fab {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Connection status with additional visual indicator */
+.connection-dot[data-status="connected"]::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--green);
+  opacity: 0.3;
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* Ensure sufficient color contrast for text */
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+span,
+label {
+  color: var(--text-primary);
+}
+
+.text-muted,
+.empty-subtitle {
+  color: var(--text-secondary);
+}
+
+/* Focus management for modals and overlays */
+[role="dialog"]:not(.hidden),
+[role="alertdialog"]:not(.hidden) {
+  /* Trap focus within modal when open */
+}
+
+/* Screen reader announcements */
+#announcer {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Ensure chat content is readable */
+.chat-content {
+  line-height: 1.6;
+  max-width: 65ch; /* Optimal reading width */
+}
+
+/* Code blocks should be horizontally scrollable */
+pre,
+code {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}

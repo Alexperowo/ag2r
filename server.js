@@ -13,61 +13,102 @@ import compression from 'compression';
 import selfsigned from 'selfsigned';
 import multer from 'multer';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 
 dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// === Configuration (SSoT: .env.example) ===
-const PORT = parseInt(process.env.PORT || '3000');
-const CDP_HOST = process.env.CDP_HOST || '127.0.0.1';
-const CDP_PORT = parseInt(process.env.CDP_PORT || '9000');
-const APP_PASSWORD = process.env.APP_PASSWORD || 'antigravity';
-const SESSION_SECRET = process.env.SESSION_SECRET || 'ag2r-default-secret';
-const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL_MS || '500');
-const AUTH_ENABLED = process.env.AUTH_ENABLED === 'true';
-const TUNNEL_ENABLED = process.env.TUNNEL_ENABLED === 'true';
-const TUNNEL_URL = process.env.TUNNEL_URL || '';
-const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // 10MB
+// ─────────────────────────────────────────────
+// Configuration (SSoT: .env.example)
+// ─────────────────────────────────────────────
+
+const CONFIG = Object.freeze({
+  PORT: parseInt(process.env.PORT || '3000'),
+  CDP_HOST: process.env.CDP_HOST || '127.0.0.1',
+  CDP_PORT: parseInt(process.env.CDP_PORT || '9000'),
+  POLL_INTERVAL_MS: parseInt(process.env.POLL_INTERVAL_MS || '500'),
+  RECONNECT_DELAY_MS: 3000,
+  CAPTURE_RETRY_COUNT: 3,
+  CAPTURE_RETRY_BASE_DELAY_MS: 100,
+  BURST_CAPTURE_DELAYS_MS: [150, 400, 700],
+  MAX_UPLOAD_SIZE_BYTES: 10 * 1024 * 1024,
+  SESSION_TIMEOUT_MS: 30 * 24 * 60 * 60 * 1000,
+  DUPLICATE_MESSAGE_WINDOW_MS: 2000,
+  OVERLAY_SUPPRESS_WINDOW_MS: 2000,
+  AUTH_ENABLED: process.env.AUTH_ENABLED === 'true',
+  TUNNEL_ENABLED: process.env.TUNNEL_ENABLED === 'true',
+  TUNNEL_URL: process.env.TUNNEL_URL || '',
+  DEBUG_MODE: process.env.DEBUG_MODE === 'true',
+});
+
+// Generate secure random secrets if not provided
+const APP_PASSWORD = process.env.APP_PASSWORD || crypto.randomBytes(16).toString('hex');
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+
+// Log generated credentials at startup (only if auto-generated)
+if (!process.env.APP_PASSWORD) {
+  console.log(`\n[AG2R] Auto-generated APP_PASSWORD: ${APP_PASSWORD}`);
+  console.log('[AG2R] Please set APP_PASSWORD in .env for production\n');
+}
+if (!process.env.SESSION_SECRET) {
+  console.log('[AG2R] Auto-generated SESSION_SECRET (set in .env for persistence)\n');
+}
 
 // === Multer (file upload) ===
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_UPLOAD_SIZE },
+  limits: { fileSize: CONFIG.MAX_UPLOAD_SIZE_BYTES },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) cb(null, true);
     else cb(new Error('Only image files are allowed'));
   },
 });
 
-// === Mutable State ===
-let cdpClient = null;
-let cdpContexts = [];
-let preferredContextId = null;
-let cachedSnapshot = null;
-let lastSnapshotHash = null;
-let pollTimer = null;
-let reconnectTimer = null;
-const wsClients = new Set();
+// ─────────────────────────────────────────────
+// Application State
+// ─────────────────────────────────────────────
+
+const state = {
+  cdpClient: null,
+  cdpContexts: [],
+  preferredContextId: null,
+  cachedSnapshot: null,
+  lastSnapshotHash: null,
+  pollTimer: null,
+  reconnectTimer: null,
+  wsClients: new Set(),
+  lastSentMessage: { text: '', time: 0 },
+  overlayDismissedAt: 0,
+};
 
 // ─────────────────────────────────────────────
 // Utilities
 // ─────────────────────────────────────────────
 
+// Use crypto-based hashing for better collision resistance on large strings
+/**
+ * Hash a string using MD5 for collision-resistant comparison
+ * @param {string} str - Input string
+ * @returns {string} Hex digest
+ */
 function hashString(str) {
-  let hash = 5381;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) + hash) + str.charCodeAt(i);
-  }
-  return (hash >>> 0).toString(36);
+  return crypto.createHash('md5').update(str).digest('hex');
 }
 
+/**
+ * Generate auth token from password
+ * @returns {string} Auth token
+ */
 function authToken() {
   return hashString(APP_PASSWORD + ':ag2r-salt');
 }
 
-
-
+/**
+ * Logger with prefix
+ * @param {string} prefix - Log category
+ * @param {...any} args - Arguments to log
+ */
 function log(prefix, ...args) {
   console.log(`[${prefix}]`, ...args);
 }
@@ -198,7 +239,11 @@ async function connectCDP() {
   // Force AG's page to think it's focused even when in background.
   // Without this, the browser defers rendering and React batches updates,
   // causing expanded sections to appear empty until the user focuses the window.
-  try { await client.Emulation.setFocusEmulationEnabled({ enabled: true }); } catch {}
+  try { 
+    await client.Emulation.setFocusEmulationEnabled({ enabled: true }); 
+  } catch (e) {
+    console.debug('[FocusEmulation] Ignored:', e.message);
+  }
 
   log('CDP', `Connected. ${cdpContexts.length} execution context(s) available.`);
   broadcastStatus();
@@ -368,7 +413,9 @@ const CAPTURE_SCRIPT = `
         el.setAttribute('data-ag-sticky', '1');
         marked.push(el);
       }
-    } catch {}
+    } catch (e) {
+      console.debug('[RemoveOverlays] Ignored:', e.message);
+    }
   });
   const chatTagged = tagInteractives(container, 'chat', false, true, 80);
 
@@ -441,7 +488,9 @@ const CAPTURE_SCRIPT = `
   for (const sheet of document.styleSheets) {
     try {
       for (const rule of sheet.cssRules) { css += rule.cssText + '\\n'; }
-    } catch {}
+    } catch (e) {
+      console.debug('[CollectCSS] Ignored:', e.message);
+    }
   }
 
   // -- 13b. Extract ALL CSS custom properties from DOM --
@@ -687,15 +736,28 @@ const CAPTURE_SCRIPT = `
 
 
 
-async function captureSnapshot() {
-  try {
-    const result = await evaluateInBrowser(CAPTURE_SCRIPT);
-    if (!result) return null;
-    return result;
-  } catch (e) {
-    console.debug('[Snapshot] Capture failed:', e.message);
-    return null;
+async function captureSnapshot(retries = 3) {
+  let lastError = null;
+  
+  for (let i = 0; i < retries; i++) {
+    try {
+      const result = await evaluateInBrowser(CAPTURE_SCRIPT);
+      if (result) return result;
+      // If result is null, retry after a short delay
+      if (i < retries - 1) {
+        await new Promise(r => setTimeout(r, 100 * Math.pow(2, i)));
+      }
+    } catch (e) {
+      lastError = e;
+      if (i < retries - 1) {
+        // Exponential backoff: 100ms, 200ms, 400ms...
+        await new Promise(r => setTimeout(r, 100 * Math.pow(2, i)));
+      }
+    }
   }
+  
+  console.debug('[Snapshot] Capture failed after', retries, 'retries:', lastError?.message);
+  return null;
 }
 
 // ─────────────────────────────────────────────
@@ -834,10 +896,19 @@ function startPolling() {
   if (pollTimer) return;
 
   async function poll() {
-    if (!cdpClient) {
-      pollTimer = setTimeout(poll, POLL_INTERVAL);
+    // Prevent race condition: only one poll at a time
+    if (pollTimer === 'running') {
+      pollTimer = setTimeout(poll, CONFIG.POLL_INTERVAL_MS);
       return;
     }
+    
+    if (!cdpClient) {
+      pollTimer = setTimeout(poll, CONFIG.POLL_INTERVAL_MS);
+      return;
+    }
+
+    // Mark as running to prevent concurrent executions
+    pollTimer = 'running';
 
     try {
       const snapshot = await captureSnapshot();
@@ -883,11 +954,14 @@ function startPolling() {
         console.debug('[Poll] Error:', e.message);
         errorLogThrottle = now;
       }
+    } finally {
+      // Schedule next poll with cleanup
+      pollTimer = setTimeout(() => {
+        poll();
+      }, CONFIG.POLL_INTERVAL_MS);
     }
-
-    pollTimer = setTimeout(poll, POLL_INTERVAL);
   }
-
+  
   poll();
 }
 
@@ -1360,35 +1434,36 @@ app.post('/click', async (req, res) => {
     if (result?.ok) {
       const source = result.source || '';
       if (['env', 'model', 'project', 'dropdown', 'dialog', 'left'].includes(source)) {
-        const burstCapture = async (delay) => {
-          await new Promise(r => setTimeout(r, delay));
-          try {
-            const snapshot = await captureSnapshot();
-            if (snapshot) {
-              const hash = hashString(
-                snapshot.html +
-                (snapshot.leftSidebarHtml || '') +
-                (snapshot.rightSidebarHtml || '') +
-                (snapshot.dropdownHtml || '') +
-                (snapshot.dialogHtml || '') +
-                (snapshot.settingsHtml || '') +
-                (snapshot.permissionHtml || '')
-              );
-              if (hash !== lastSnapshotHash) {
-                cachedSnapshot = snapshot;
-                cachedSnapshot.hash = hash;
-                lastSnapshotHash = hash;
-                broadcast({ type: 'snapshot', hash, agentRunning: snapshot.agentRunning, timestamp: new Date().toISOString() });
+        // Sequential burst captures to prevent CDP overload
+        const burstCapture = async () => {
+          for (const delay of [150, 400, 700]) {
+            await new Promise(r => setTimeout(r, delay));
+            try {
+              const snapshot = await captureSnapshot();
+              if (snapshot) {
+                const hash = hashString(
+                  snapshot.html +
+                  (snapshot.leftSidebarHtml || '') +
+                  (snapshot.rightSidebarHtml || '') +
+                  (snapshot.dropdownHtml || '') +
+                  (snapshot.dialogHtml || '') +
+                  (snapshot.settingsHtml || '') +
+                  (snapshot.permissionHtml || '')
+                );
+                if (hash !== lastSnapshotHash) {
+                  cachedSnapshot = snapshot;
+                  cachedSnapshot.hash = hash;
+                  lastSnapshotHash = hash;
+                  broadcast({ type: 'snapshot', hash, agentRunning: snapshot.agentRunning, timestamp: new Date().toISOString() });
+                }
               }
+            } catch (e) {
+              console.debug('[BurstCapture] Error:', e.message);
             }
-          } catch (e) {
-            console.debug('[BurstCapture] Error:', e.message);
           }
         };
-        // Fire 3 rapid captures at 150ms, 400ms, 700ms
-        burstCapture(150);
-        burstCapture(400);
-        burstCapture(700);
+        // Fire sequential captures
+        burstCapture();
       }
     }
   } catch (e) {
@@ -1397,8 +1472,12 @@ app.post('/click', async (req, res) => {
   }
 });
 
-// --- Temp eval for debugging ---
+// --- Temp eval for debugging (DISABLED in production) ---
 app.post('/eval', async (req, res) => {
+  // Security: Only allow in debug mode
+  if (process.env.DEBUG_MODE !== 'true') {
+    return res.status(404).json({ error: 'Not found' });
+  }
   try {
     const result = await evaluateInBrowser(`${req.body.script}`);
     res.json({ result });
@@ -1477,7 +1556,7 @@ app.post('/upload', upload.single('image'), async (req, res) => {
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(413).json({ error: `File too large (max ${MAX_UPLOAD_SIZE / 1024 / 1024}MB)` });
+      return res.status(413).json({ error: `File too large (max ${CONFIG.MAX_UPLOAD_SIZE_BYTES / 1024 / 1024}MB)` });
     }
     return res.status(400).json({ error: err.message });
   }
@@ -1633,7 +1712,9 @@ const DISCOVER_SCRIPT = `
           visible: el.offsetParent !== null,
         });
       });
-    } catch {}
+    } catch (e) {
+      console.debug('[A11yScan] Ignored:', e.message);
+    }
   }
 
   // 4. Find tab structures
@@ -1774,14 +1855,16 @@ async function start() {
       }));
     }
 
-    ws.on('close', () => {
-      wsClients.delete(ws);
-      log('WS', `Client disconnected (${wsClients.size} total)`);
-    });
+    // Cleanup function to prevent double-removal
+    const cleanup = () => {
+      if (wsClients.has(ws)) {
+        wsClients.delete(ws);
+        log('WS', `Client disconnected (${wsClients.size} total)`);
+      }
+    };
 
-    ws.on('error', () => {
-      wsClients.delete(ws);
-    });
+    ws.on('close', cleanup);
+    ws.on('error', cleanup);
   });
 
   // Start listening

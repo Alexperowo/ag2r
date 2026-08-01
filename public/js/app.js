@@ -73,8 +73,9 @@ let overlayDismissedAt = 0;
 // ─────────────────────────────────────────────
 // Updates --input-bar-height CSS variable so quick-actions and scroll-fab
 // float above the input bar regardless of its height (future: thumbnails, tasks bar).
+let inputBarObserver = null;
 if (typeof ResizeObserver !== 'undefined') {
-  const inputBarObserver = new ResizeObserver(entries => {
+  inputBarObserver = new ResizeObserver(entries => {
     for (const entry of entries) {
       const h = entry.borderBoxSize?.[0]?.blockSize ?? entry.target.offsetHeight;
       document.documentElement.style.setProperty('--input-bar-height', h + 'px');
@@ -82,6 +83,13 @@ if (typeof ResizeObserver !== 'undefined') {
   });
   inputBarObserver.observe(inputBar);
 }
+
+// Cleanup observer on page unload to prevent memory leaks
+window.addEventListener('beforeunload', () => {
+  if (inputBarObserver) {
+    inputBarObserver.disconnect();
+  }
+});
 
 // ─────────────────────────────────────────────
 // Fetch Wrapper (redirects to login on 401)
@@ -1131,13 +1139,22 @@ function closeLeftSidebar() {
 }
 
 sidebarToggle.addEventListener('click', () => {
-  if (leftSidebar.classList.contains('open')) {
-    closeLeftSidebar();
-  } else {
+  const isOpen = !leftSidebar.classList.contains('open');
+  if (isOpen) {
     openLeftSidebar();
+    updateSidebarToggleState(sidebarToggle, true);
+    announce('Navigation sidebar opened');
+  } else {
+    closeLeftSidebar();
+    updateSidebarToggleState(sidebarToggle, false);
+    announce('Navigation sidebar closed');
   }
 });
-leftSidebarOverlay.addEventListener('click', closeLeftSidebar);
+leftSidebarOverlay.addEventListener('click', () => {
+  closeLeftSidebar();
+  updateSidebarToggleState(sidebarToggle, false);
+  announce('Navigation sidebar closed');
+});
 
 // Dropdown backdrop dismiss — also close the dropdown in AG
 dropdownBackdrop.addEventListener('click', () => {
@@ -1177,12 +1194,24 @@ function closeRightSidebar() {
 }
 
 function toggleRightSidebar() {
-  if (rightSidebar.classList.contains('open')) closeRightSidebar();
-  else openRightSidebar();
+  const isOpen = !rightSidebar.classList.contains('open');
+  if (isOpen) {
+    openRightSidebar();
+    updateSidebarToggleState(reviewToggle, true);
+    announce('Review panel opened');
+  } else {
+    closeRightSidebar();
+    updateSidebarToggleState(reviewToggle, false);
+    announce('Review panel closed');
+  }
 }
 
 reviewToggle.addEventListener('click', toggleRightSidebar);
-rightSidebarOverlay.addEventListener('click', closeRightSidebar);
+rightSidebarOverlay.addEventListener('click', () => {
+  closeRightSidebar();
+  updateSidebarToggleState(reviewToggle, false);
+  announce('Review panel closed');
+});
 
 // ─────────────────────────────────────────────
 // Sidebar Content Rendering
@@ -1577,6 +1606,8 @@ addClickProxyHandlers(inputBar);
 // ─────────────────────────────────────────────
 // Connection Status
 // ─────────────────────────────────────────────
+let lastConnectionStatus = null;
+
 function updateConnectionStatus(status) {
   connectionDot.setAttribute('data-status', status);
   const titles = {
@@ -1585,6 +1616,20 @@ function updateConnectionStatus(status) {
     disconnected: 'Disconnected',
   };
   connectionDot.title = titles[status] || status;
+  
+  // Update aria-label for screen readers
+  const statusLabels = {
+    connected: 'Connection status: connected',
+    reconnecting: 'Connection status: reconnecting',
+    disconnected: 'Connection status: disconnected',
+  };
+  connectionDot.setAttribute('aria-label', statusLabels[status] || status);
+  
+  // Announce connection status changes to screen readers
+  if (lastConnectionStatus !== status) {
+    announce(`Connection ${titles[status] || status}`, status === 'disconnected');
+    lastConnectionStatus = status;
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -1969,6 +2014,75 @@ reviewSend.addEventListener('click', () => {
 // Show badge on load if there are persisted comments
 if (queuedComments.length > 0) updateCommentBadge();
 
+// ─────────────────────────────────────────────
+// Accessibility Helpers
+// ─────────────────────────────────────────────
+
+/**
+ * Announce a message to screen readers via the live region
+ * @param {string} message - Message to announce
+ * @param {boolean} assertive - Use assertive mode (default: polite)
+ */
+function announce(message, assertive = false) {
+  const announcer = document.getElementById('announcer');
+  if (!announcer) return;
+  
+  // Clear previous announcement
+  announcer.textContent = '';
+  
+  // Set priority based on assertiveness
+  announcer.setAttribute('aria-live', assertive ? 'assertive' : 'polite');
+  
+  // Small delay ensures screen readers pick up the change
+  setTimeout(() => {
+    announcer.textContent = message;
+  }, 100);
+}
+
+/**
+ * Update sidebar toggle button aria-expanded state
+ * @param {HTMLElement} button - Toggle button
+ * @param {boolean} isOpen - Whether sidebar is open
+ */
+function updateSidebarToggleState(button, isOpen) {
+  if (!button) return;
+  button.setAttribute('aria-expanded', String(isOpen));
+}
+
+/**
+ * Manage focus when opening modals/overlays
+ * @param {HTMLElement} modal - Modal element
+ */
+function trapFocusInModal(modal) {
+  if (!modal) return;
+  
+  const focusableElements = modal.querySelectorAll(
+    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex=\"-1\"])'
+  );
+  
+  if (focusableElements.length === 0) return;
+  
+  const firstElement = focusableElements[0];
+  const lastElement = focusableElements[focusableElements.length - 1];
+  
+  // Focus first element
+  firstElement.focus();
+  
+  // Trap focus within modal
+  function handleTabKey(e) {
+    if (e.key !== 'Tab') return;
+    
+    if (e.shiftKey && document.activeElement === firstElement) {
+      e.preventDefault();
+      lastElement.focus();
+    } else if (!e.shiftKey && document.activeElement === lastElement) {
+      e.preventDefault();
+      firstElement.focus();
+    }
+  }
+  
+  modal.addEventListener('keydown', handleTabKey, { once: true });
+}
 
 // ─────────────────────────────────────────────
 // Initialization
@@ -1976,3 +2090,6 @@ if (queuedComments.length > 0) updateCommentBadge();
 connectWebSocket();
 loadSnapshot();
 updateActionButton();
+
+// Initialize accessibility features
+announce('AG2R loaded. Connection status: disconnected.');
