@@ -8,3 +8,8 @@ certs/
 !.telemetry/dashboard.html
 !.telemetry/admin.js
 _tools/
+ask_*.js
+consilium*.js
+audit_*.md
+ag2r-codebase.txt
+*audit_result*.md

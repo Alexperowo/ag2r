@@ -4,7 +4,8 @@ export const TAGGER_SCRIPT = `
     const tagged = [];
     root.querySelectorAll('button, a, [role="button"]').forEach(el => {
       if (skipVisibilityCheck || el.offsetParent !== null) {
-        const text = (el.textContent || '').trim();
+        const text = (el.getAttribute('aria-label') || el.title || el.textContent || '').trim();
+        if (!text && el.tagName !== 'BUTTON' && !el.querySelector('svg')) return;
         el.setAttribute('data-ag-click-id', prefix + ':' + idx);
         el.setAttribute('data-ag-click-label', text.substring(0, 50));
         idx++;
@@ -14,7 +15,8 @@ export const TAGGER_SCRIPT = `
     if (includeCursorPointer) {
       root.querySelectorAll('[class*="cursor-pointer"]').forEach(el => {
         if ((skipVisibilityCheck || el.offsetParent !== null) && !el.hasAttribute('data-ag-click-id')) {
-          const text = (el.textContent || '').trim();
+          const text = (el.getAttribute('aria-label') || el.title || el.textContent || '').trim();
+          if (!text && el.tagName !== 'BUTTON' && !el.querySelector('svg')) return;
           const hasHandler = typeof el.onclick === 'function';
           if (maxTextLength && text.length > maxTextLength && !hasHandler) return;
           el.setAttribute('data-ag-click-id', prefix + ':' + idx);

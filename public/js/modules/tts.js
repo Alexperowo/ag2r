@@ -58,6 +58,11 @@ function getRussianVoice() {
 }
 
 export function extractCleanText(element) {
+  const currentLength = element.innerText ? element.innerText.length : 0;
+  if (element.dataset.ttsText && element.dataset.ttsTextLength == currentLength) {
+    return element.dataset.ttsText;
+  }
+
   const clone = element.cloneNode(true);
   
   // Remove ALL elements that produce non-content text
@@ -93,6 +98,9 @@ export function extractCleanText(element) {
     .replace(/\s+/g, ' ')
     .trim();
   
+  element.dataset.ttsTextLength = currentLength;
+  element.dataset.ttsText = text;
+  
   return text;
 }
 
@@ -100,8 +108,13 @@ let _currentAudio = null;
 let _currentAudioUrl = null;
 let _currentBtn = null;
 let _currentText = null;
+let _abortController = null;
 
 export function stopAllTts() {
+  if (_abortController) {
+    _abortController.abort();
+    _abortController = null;
+  }
   if (_currentAudio) {
     try {
       _currentAudio.pause();
@@ -203,12 +216,15 @@ export async function speakText(text, activeBtn = null, force = false) {
     activeBtn.style.color = '#38bdf8';
   }
 
+  _abortController = new AbortController();
+
   // Try High-Quality Neural TTS (Edge TTS via /speak) by default
   try {
     const res = await fetch('/speak', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),
+      signal: _abortController.signal
     });
 
     if (res.ok) {
@@ -254,6 +270,10 @@ export async function speakText(text, activeBtn = null, force = false) {
       return;
     }
   } catch (err) {
+    if (err.name === 'AbortError') {
+      console.debug('[TTS] Fetch aborted');
+      return; // Skip fallback if we explicitly aborted
+    }
     console.debug('[TTS] Neural TTS failed, falling back to browser voice:', err.message);
   }
 

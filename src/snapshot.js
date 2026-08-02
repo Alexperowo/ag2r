@@ -11,6 +11,8 @@ import { hashString } from './utils.js';
 import { broadcast } from './broadcast.js';
 
 export async function captureSnapshot() {
+  if (state.isCapturing) return null;
+  state.isCapturing = true;
   try {
     let result = await evaluateInBrowser(CAPTURE_SCRIPT);
     if (!result) {
@@ -71,6 +73,8 @@ export async function captureSnapshot() {
   } catch (e) {
     console.debug('[Snapshot] Capture failed:', e.message);
     return null;
+  } finally {
+    state.isCapturing = false;
   }
 }
 

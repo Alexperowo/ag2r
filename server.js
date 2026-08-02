@@ -47,6 +47,15 @@ if (TUNNEL_ENABLED) {
 const rateLimits = new Map();
 const RL_WINDOW_MS = 60 * 1000;
 const RL_MAX_REQ = 100;
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, timestamps] of rateLimits.entries()) {
+    const valid = timestamps.filter(t => now - t < RL_WINDOW_MS);
+    if (valid.length === 0) rateLimits.delete(ip);
+    else rateLimits.set(ip, valid);
+  }
+}, 5 * 60 * 1000);
 app.use((req, res, next) => {
   if (req.method === 'POST' && ['/login', '/click', '/send', '/eval'].includes(req.path)) {
     const ip = req.ip || req.connection.remoteAddress;
@@ -67,6 +76,13 @@ app.use((req, res, next) => {
 
 // Register routes and auth middleware
 registerRoutes(app);
+
+// Global Error Handler (added based on Consilium audit)
+app.use((err, req, res, next) => {
+  console.error('[Express] Uncaught error:', err);
+  track('api_error', { endpoint: req.path, status: 500, error: err.message });
+  res.status(500).json({ error: 'Internal Server Error' });
+});
 
 async function start() {
   let server;

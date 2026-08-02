@@ -111,12 +111,16 @@ export const CAPTURE_SCRIPT = `
 
   ${CLEANUP_CLONE_SCRIPT}
 
-  let html = clone.innerHTML;
-  html = html.replace(/class="([^"]*)"/g, (match, classes) => {
-    if (!classes.includes('[object Object]')) return match;
-    const cleaned = classes.replace(/\\\\\\\\[object Object\\\\\\\\]/g, '').replace(/\\\\\\\\s+/g, ' ').trim();
-    return 'class="' + cleaned + '"';
+  clone.querySelectorAll('[class*="object Object"]').forEach(el => {
+    let cls = el.getAttribute('class');
+    if (cls) {
+      cls = cls.replace(/\[object Object\]/g, '').replace(/\s+/g, ' ').trim();
+      if (cls) el.setAttribute('class', cls);
+      else el.removeAttribute('class');
+    }
   });
+
+  let html = clone.innerHTML;
 
   ${CSS_CAPTURE_SCRIPT}
 

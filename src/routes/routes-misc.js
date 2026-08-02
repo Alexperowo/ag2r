@@ -113,8 +113,10 @@ export function registerMiscRoutes(app) {
     (() => {
       const overlay = document.querySelector('.fixed.inset-0[class*="z-[2550]"]');
       const scope = overlay || document;
-      const el = scope.querySelector('input[placeholder=' + ${JSON.stringify(JSON.stringify(placeholder))} + '], textarea[placeholder=' + ${JSON.stringify(JSON.stringify(placeholder))} + ']');
-      if (!el) return { ok: false, reason: 'element_not_found', placeholder: ${safePlaceholder} };
+      const ph = ${safePlaceholder};
+      const selector = 'input[placeholder=' + JSON.stringify(ph) + '], textarea[placeholder=' + JSON.stringify(ph) + ']';
+      const el = scope.querySelector(selector);
+      if (!el) return { ok: false, reason: 'element_not_found', placeholder: ph };
 
       el.focus();
 
@@ -165,40 +167,45 @@ export function registerMiscRoutes(app) {
         await evaluateAcrossContexts(`window.__ag2r_chunks.push(${JSON.stringify(chunk)});`);
       }
 
-      const result = await evaluateInBrowser(`
-      (async () => {
-        const base64 = window.__ag2r_chunks.join('');
-        window.__ag2r_chunks = null; // free memory
-        const mimetype = ${JSON.stringify(mimetype)};
-        const fileName = ${JSON.stringify(fileName)};
-
-        const binaryStr = atob(base64);
-        const bytes = new Uint8Array(binaryStr.length);
-        for (let i = 0; i < binaryStr.length; i++) {
-          bytes[i] = binaryStr.charCodeAt(i);
-        }
-
-        const file = new File([bytes], fileName, { type: mimetype });
-
-        const editorCandidates = document.querySelectorAll(
-          '[data-lexical-editor="true"], [contenteditable="true"][role="textbox"], [contenteditable="true"]'
-        );
-        let editor = null;
-        for (const el of editorCandidates) {
-          if (el.offsetParent !== null) editor = el;
-        }
-        if (!editor) throw new Error('no_editor'); // Throw so CDP continues to next context if in iframe
-
-        const dt = new DataTransfer();
-        dt.items.add(file);
-
-        editor.dispatchEvent(new DragEvent('dragenter', { dataTransfer: dt, bubbles: true }));
-        editor.dispatchEvent(new DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true }));
-        editor.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
-
-        return { ok: true, method: 'drop', fileName, size: bytes.length };
-      })()
-      `);
+      let result;
+      try {
+        result = await evaluateInBrowser(`
+        (async () => {
+          const base64 = window.__ag2r_chunks.join('');
+          window.__ag2r_chunks = null; // free memory
+          const mimetype = ${JSON.stringify(mimetype)};
+          const fileName = ${JSON.stringify(fileName)};
+  
+          const binaryStr = atob(base64);
+          const bytes = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+          }
+  
+          const file = new File([bytes], fileName, { type: mimetype });
+  
+          const editorCandidates = document.querySelectorAll(
+            '[data-lexical-editor="true"], [contenteditable="true"][role="textbox"], [contenteditable="true"]'
+          );
+          let editor = null;
+          for (const el of editorCandidates) {
+            if (el.offsetParent !== null) editor = el;
+          }
+          if (!editor) throw new Error('no_editor'); // Throw so CDP continues to next context if in iframe
+  
+          const dt = new DataTransfer();
+          dt.items.add(file);
+  
+          editor.dispatchEvent(new DragEvent('dragenter', { dataTransfer: dt, bubbles: true }));
+          editor.dispatchEvent(new DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true }));
+          editor.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+  
+          return { ok: true, method: 'drop', fileName, size: bytes.length };
+        })()
+        `);
+      } finally {
+        await evaluateAcrossContexts('window.__ag2r_chunks = null;').catch(() => {});
+      }
 
       log('Upload', `Injection result: ${JSON.stringify(result)}`);
 

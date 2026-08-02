@@ -17,12 +17,18 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@gpt4free/g4f.dev": "^1.1.2",
+    "@gradio/client": "^2.4.0",
+    "@huggingface/inference": "^4.13.24",
     "chrome-remote-interface": "^0.33.2",
     "compression": "^1.7.5",
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.7",
+    "duckduckgo-ai-chat": "^1.0.0",
     "express": "^4.21.2",
+    "https-proxy-agent": "^9.1.0",
     "multer": "^2.1.1",
+    "node-fetch": "^3.3.2",
     "selfsigned": "^2.4.1",
     "ws": "^8.18.0"
   }

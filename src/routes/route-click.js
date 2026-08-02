@@ -13,6 +13,8 @@ import {
   makePermClickScript
 } from '../cdp/scripts/click-scripts.js';
 
+let captureGeneration = 0;
+
 export function registerClickRoute(app) {
   app.post('/click', async (req, res) => {
     const { clickId, label } = req.body;
@@ -112,8 +114,10 @@ export function registerClickRoute(app) {
         if (['env', 'model', 'project', 'dropdown', 'dialog', 'left'].includes(source)) {
           const burstCapture = async (delay) => {
             await new Promise(r => setTimeout(r, delay));
+            const currentGen = ++captureGeneration;
             try {
               const snapshot = await captureSnapshot();
+              if (currentGen < captureGeneration) return; // newer capture initiated, discard this one
               if (snapshot) {
                 const hash = hashString(
                   snapshot.html +
