@@ -15,7 +15,7 @@ import {
   HTTP_ONLY
 } from './src/config.js';
 import { state } from './src/state.js';
-import { log, ensureCerts, authToken } from './src/utils.js';
+import { log, ensureCerts, authToken, parseCookies } from './src/utils.js';
 import { connectCDP, scheduleReconnect } from './src/cdp.js';
 import { startPolling, stopPolling } from './src/snapshot.js';
 import { broadcast, broadcastStatus } from './src/broadcast.js';
@@ -43,41 +43,56 @@ if (TUNNEL_ENABLED) {
   app.set('trust proxy', true);
 }
 
-// --- Basic Rate Limiting ---
-const rateLimits = new Map();
-const RL_WINDOW_MS = 60 * 1000;
-const RL_MAX_REQ = 100;
+// --- Rate Limiting Configuration ---
+const RATE_LIMIT_CONFIG = {
+  windowMs: 60 * 1000,        // 1 minute window
+  maxRequests: 100,            // max requests per window
+  cleanupIntervalMs: 5 * 60 * 1000  // cleanup every 5 minutes
+};
 
-setInterval(() => {
+const rateLimits = new Map();
+
+function cleanupRateLimits() {
   const now = Date.now();
   for (const [ip, timestamps] of rateLimits.entries()) {
-    const valid = timestamps.filter(t => now - t < RL_WINDOW_MS);
-    if (valid.length === 0) rateLimits.delete(ip);
-    else rateLimits.set(ip, valid);
+    const valid = timestamps.filter(t => now - t < RATE_LIMIT_CONFIG.windowMs);
+    if (valid.length === 0) {
+      rateLimits.delete(ip);
+    } else {
+      rateLimits.set(ip, valid);
+    }
   }
-}, 5 * 60 * 1000);
+}
+
+setInterval(cleanupRateLimits, RATE_LIMIT_CONFIG.cleanupIntervalMs);
+
 app.use((req, res, next) => {
-  if (req.method === 'POST' && ['/login', '/click', '/send', '/eval'].includes(req.path)) {
+  const protectedPaths = ['/login', '/click', '/send', '/eval'];
+  if (req.method === 'POST' && protectedPaths.includes(req.path)) {
     const ip = req.ip || req.connection.remoteAddress;
     const now = Date.now();
+    
     if (!rateLimits.has(ip)) {
       rateLimits.set(ip, []);
     }
-    const timestamps = rateLimits.get(ip).filter(t => now - t < RL_WINDOW_MS);
-    if (timestamps.length >= RL_MAX_REQ) {
+    
+    const timestamps = rateLimits.get(ip).filter(t => now - t < RATE_LIMIT_CONFIG.windowMs);
+    
+    if (timestamps.length >= RATE_LIMIT_CONFIG.maxRequests) {
       log('Security', `Rate limit exceeded for IP: ${ip} on path ${req.path}`);
       return res.status(429).json({ error: 'Too many requests, please try again later.' });
     }
+    
     timestamps.push(now);
     rateLimits.set(ip, timestamps);
   }
   next();
 });
 
-// Register routes and auth middleware
+// Register routes
 registerRoutes(app);
 
-// Global Error Handler (added based on Consilium audit)
+// Global Error Handler
 app.use((err, req, res, next) => {
   console.error('[Express] Uncaught error:', err);
   track('api_error', { endpoint: req.path, status: 500, error: err.message });
@@ -93,11 +108,12 @@ async function start() {
     const sslOpts = ensureCerts();
     server = createHttpsServer(sslOpts, app);
   }
+  
   const wss = new WebSocketServer({ server });
 
   wss.on('connection', (ws, req) => {
     if (AUTH_ENABLED) {
-      const cookies = parseCookiesFromHeader(req.headers.cookie || '');
+      const cookies = parseCookies(req.headers.cookie || '');
       const signed = cookieParser.signedCookie(cookies.ag2r_token || '', SESSION_SECRET);
       if (signed !== authToken()) {
         ws.send(JSON.stringify({ type: 'error', message: 'Unauthorized' }));
@@ -109,11 +125,13 @@ async function start() {
     state.wsClients.add(ws);
     log('WS', `Client connected (${state.wsClients.size} total)`);
 
+    // Send initial connection status
     ws.send(JSON.stringify({
       type: 'connection',
       cdpConnected: !!state.cdpClient,
     }));
 
+    // Send cached snapshot if available
     if (state.cachedSnapshot) {
       ws.send(JSON.stringify({
         type: 'snapshot',
@@ -167,15 +185,6 @@ async function start() {
 
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
-}
-
-function parseCookiesFromHeader(header) {
-  const cookies = {};
-  header.split(';').forEach(pair => {
-    const [name, ...rest] = pair.trim().split('=');
-    if (name) cookies[name.trim()] = decodeURIComponent(rest.join('='));
-  });
-  return cookies;
 }
 
 start().catch(e => {
