@@ -54,3 +54,12 @@ export function ensureCerts() {
 
   return { key: pems.private, cert: pems.cert };
 }
+
+export function parseCookies(header) {
+  const cookies = {};
+  header.split(';').forEach(pair => {
+    const [name, ...rest] = pair.trim().split('=');
+    if (name) cookies[name.trim()] = decodeURIComponent(rest.join('='));
+  });
+  return cookies;
+}
