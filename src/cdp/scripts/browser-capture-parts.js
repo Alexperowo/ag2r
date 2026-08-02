@@ -5,7 +5,7 @@ export const CLEANUP_CLONE_SCRIPT = `
         let target = el;
         while (target.parentElement && target.parentElement !== clone) {
           const btn = target.parentElement.querySelector('button, [role="button"]');
-          if (/^(Allow|Deny|Review|Run|Confirm|Accept|Reject)/i.test(btn?.textContent?.trim() || '')) break;
+          if (/^(Allow|Deny|Review|Run|Confirm|Accept|Reject)\b/i.test(btn?.textContent?.trim() || '')) break;
           target = target.parentElement;
         }
         if (target.parentElement === clone) target.remove();
@@ -17,7 +17,7 @@ export const CLEANUP_CLONE_SCRIPT = `
   clone.querySelectorAll('[data-ag-remove]').forEach(el => {
     let isActionBar = false;
     el.querySelectorAll('button, [role="button"]').forEach(b => {
-      if (/^(Allow|Deny|Review|Run|Confirm)/i.test(b.textContent?.trim())) isActionBar = true;
+      if (/^(Allow|Deny|Review|Run|Confirm)\b/i.test(b.textContent?.trim())) isActionBar = true;
     });
     const isMessageAction = el.tagName === 'BUTTON' || 
                             el.getAttribute('aria-label') || 
