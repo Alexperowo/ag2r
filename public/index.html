@@ -134,10 +134,10 @@
       <div id="permission-content" class="permission-content"></div>
     </div>
     <!-- Auth overlay — shown when Antigravity needs Google sign-in -->
-    <div id="auth-overlay" class="auth-overlay hidden">
+    <div id="auth-overlay" class="auth-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="auth-title" inert>
       <div class="auth-card">
         <img src="/ag2r-icon.png" alt="AG2R" class="auth-logo" width="64" height="64">
-        <h2 class="auth-title">Sign in to Antigravity</h2>
+        <h2 id="auth-title" class="auth-title">Sign in to Antigravity</h2>
         <p class="auth-subtitle">Authentication required to use the AI agent.</p>
         <button id="auth-signin-btn" class="auth-signin-btn">
           <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">

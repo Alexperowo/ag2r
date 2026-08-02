@@ -10,6 +10,7 @@ import {
 
 export function showAuthOverlay(isOnboarding = false) {
   authOverlay.classList.remove('hidden');
+  authOverlay.removeAttribute('inert');
   inputBar.classList.add('hidden');
   const qa = document.getElementById('quick-actions');
   if (qa) qa.classList.add('hidden');
@@ -51,6 +52,7 @@ export function showAuthOverlay(isOnboarding = false) {
 
 export function hideAuthOverlay() {
   authOverlay.classList.add('hidden');
+  authOverlay.setAttribute('inert', '');
   inputBar.classList.remove('hidden');
   if (window.authDotInterval) {
     clearInterval(window.authDotInterval);
