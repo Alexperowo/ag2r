@@ -1,6 +1,6 @@
 {
   "name": "ag2r",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "Accessible mobile remote interface for local Antigravity IDE sessions.",
   "engines": {
@@ -14,6 +14,7 @@
     "check:syntax": "node scripts/check-syntax.js",
     "test": "node --test",
     "check": "npm run check:syntax && npm test",
+    "check:linux": "bash scripts/linux/test-launchers.sh",
     "smoke:local": "node scripts/smoke-local.js"
   },
   "keywords": [

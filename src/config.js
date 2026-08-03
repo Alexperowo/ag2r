@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config({ path: process.env.AG2R_ENV_PATH || undefined });
 
 import crypto from 'crypto';
 
