@@ -46,15 +46,9 @@ export function registerArtifactRoute(app) {
           const candidatePath = path.join(fullConvPath, path.basename(targetName));
           if (fs.existsSync(candidatePath) && fs.statSync(candidatePath).isFile()) {
             const content = fs.readFileSync(candidatePath, 'utf8');
-            return res.json({ ok: true, content, source: 'brain_fs', path: candidatePath });
+            return res.json({ ok: true, content, source: 'brain_fs' });
           }
         }
-      }
-
-      // 3. Fallback: try direct path if exists
-      if (fs.existsSync(targetName) && fs.statSync(targetName).isFile()) {
-        const content = fs.readFileSync(targetName, 'utf8');
-        return res.json({ ok: true, content, source: 'direct_fs' });
       }
 
       res.status(404).json({ error: 'Artifact not found' });

@@ -3,7 +3,6 @@ import { log, hashString } from '../utils.js';
 import { evaluateInBrowser, evaluateAcrossContexts } from '../cdp.js';
 import { captureSnapshot } from '../snapshot.js';
 import { broadcast } from '../broadcast.js';
-import { track } from '../telemetry.js';
 import {
   makeTaskClickScript,
   makeSchedClickScript,
@@ -22,21 +21,6 @@ export function registerClickRoute(app) {
 
     if (!clickId && clickId !== 0) {
       return res.status(400).json({ error: 'clickId is required' });
-    }
-
-    // Telemetry: detect meaningful clicks by prefix/label
-    const cid = String(clickId || '');
-    if (cid.startsWith('left:')) {
-      track('conversation_switched');
-    } else if (cid.startsWith('sched:')) {
-      track('scheduled_task_viewed');
-    }
-    const trimmedLabel = String(label || '').trim();
-    if (/^(Proceed|Approve)/i.test(trimmedLabel)) {
-      track('plan_approved');
-    }
-    if (/^Run$/i.test(trimmedLabel) || /^Accept$/i.test(trimmedLabel)) {
-      track('command_accepted');
     }
 
     if (!state.cdpClient) {

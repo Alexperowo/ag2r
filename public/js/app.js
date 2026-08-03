@@ -7,12 +7,11 @@ import { initAttach } from './modules/attach.js';
 import { initComment } from './modules/comment.js';
 import { initAuth } from './modules/auth.js';
 import { initMisc } from './modules/misc.js';
-import { initPowerControl } from './modules/power.js';
 import { initArtifactViewer } from './modules/artifact.js';
 import { isTtsEnabled, setTtsEnabled } from './modules/tts.js';
 import { initSTT } from './modules/stt.js';
 import { state } from './modules/state.js';
-import { fetchAPI, track } from './modules/api.js';
+import { fetchAPI } from './modules/api.js';
 import {
   dropdownBackdrop,
   dropdownOverlay,
@@ -31,15 +30,6 @@ import {
   textInputModal,
   textInputArea
 } from './modules/dom.js';
-
-// Global error tracking
-window.addEventListener('error', (e) => {
-  track('client_error', { message: (e.message || '').substring(0, 200) });
-});
-window.addEventListener('unhandledrejection', (e) => {
-  const msg = e.reason?.message || String(e.reason || '');
-  track('client_error', { message: msg.substring(0, 200) });
-});
 
 let audioUnlocked = false;
 const unlockAudio = () => {
@@ -194,6 +184,5 @@ initComment();
 initArtifactViewer();
 initAuth();
 initMisc();
-initPowerControl();
 initSTT();
 updateActionButton();

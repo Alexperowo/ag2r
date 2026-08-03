@@ -3,7 +3,6 @@ import { state } from '../state.js';
 import { log } from '../utils.js';
 import { evaluateInBrowser } from '../cdp.js';
 import { RIGHT_SIDEBAR_SCRIPT, STOP_SCRIPT } from '../cdp/scripts/capture-scripts.js';
-import { track } from '../telemetry.js';
 
 export function registerApiRoutes(app) {
   app.get('/snapshot', (req, res) => {
@@ -45,7 +44,6 @@ export function registerApiRoutes(app) {
     try {
       const result = await evaluateInBrowser(STOP_SCRIPT);
       if (result && result.ok) {
-        track('generation_stopped');
       }
       res.json(result || { ok: false });
     } catch (e) {
@@ -189,7 +187,6 @@ export function registerApiRoutes(app) {
       const result = await evaluateInBrowser(script);
       log('CopyResponse', `clickId=${clickId} text=${(result?.text || '').length} chars`);
       if (result && result.ok) {
-        track('code_copied');
       }
       res.json(result || { ok: false });
     } catch (e) {

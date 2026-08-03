@@ -35,8 +35,9 @@ export async function openArtifact(uri, titleHint = 'Artifact') {
   if (!modal || !bodyEl) return;
 
   if (titleEl) titleEl.textContent = titleHint || 'Artifact Viewer';
-  bodyEl.innerHTML = '<div style="padding: 24px; text-align: center; color: #94a3b8;">Loading artifact content...</div>';
+  showArtifactMessage(bodyEl, 'Loading artifact content...', '#94a3b8');
   modal.classList.remove('hidden');
+  document.getElementById('artifact-modal-close')?.focus();
 
   try {
     const res = await fetch(`/api/artifact-content?uri=${encodeURIComponent(uri)}`);
@@ -46,11 +47,18 @@ export async function openArtifact(uri, titleHint = 'Artifact') {
       // Basic markdown styling for code blocks, bold, lists
       bodyEl.innerHTML = formatMarkdown(data.content);
     } else {
-      bodyEl.innerHTML = `<div style="padding: 24px; text-align: center; color: #f87171;">Could not load artifact (${data.error || 'Unknown error'})</div>`;
+      showArtifactMessage(bodyEl, `Could not load artifact (${data.error || 'Unknown error'})`, '#f87171');
     }
   } catch (err) {
-    bodyEl.innerHTML = `<div style="padding: 24px; text-align: center; color: #f87171;">Error: ${err.message}</div>`;
+    showArtifactMessage(bodyEl, `Error: ${err.message}`, '#f87171');
   }
+}
+
+function showArtifactMessage(container, message, color) {
+  const messageElement = document.createElement('div');
+  messageElement.style.cssText = `padding:24px;text-align:center;color:${color}`;
+  messageElement.textContent = message;
+  container.replaceChildren(messageElement);
 }
 
 export function hideArtifactModal() {

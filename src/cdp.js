@@ -3,7 +3,6 @@ import { state } from './state.js';
 import { CDP_HOST, CDP_PORT } from './config.js';
 import { log } from './utils.js';
 import { broadcast, broadcastStatus } from './broadcast.js';
-import { track } from './telemetry.js';
 
 const withTimeout = (promise, ms) => {
   let timeoutId;
@@ -16,6 +15,33 @@ const withTimeout = (promise, ms) => {
   ]);
 };
 
+export function selectTarget(targets = []) {
+  const candidates = targets
+    .filter(target => target?.type === 'page')
+    .filter(target => {
+      const url = target.url || '';
+      return /^https?:/i.test(url);
+    })
+    .map((target, index) => {
+      const title = target.title || '';
+      const url = target.url || '';
+      let score = 0;
+
+      if (/^https?:/i.test(url)) score += 20;
+      if (title.trim().toLowerCase() === 'antigravity') score += 100;
+      if (/\/c\//i.test(url)) score += 90;
+      if (/workbench\.html/i.test(url)) score += 85;
+      if (/workbench/i.test(title)) score += 80;
+      if (/jetski/i.test(url) || title === 'Launchpad') score += 50;
+      if (/antigravity/i.test(title)) score += 40;
+
+      return { target, score, index };
+    });
+
+  candidates.sort((a, b) => b.score - a.score || a.index - b.index);
+  return candidates[0]?.target || null;
+}
+
 export async function discoverTarget() {
   const ports = [CDP_PORT, CDP_PORT + 1, CDP_PORT + 2, CDP_PORT + 3];
 
@@ -24,21 +50,8 @@ export async function discoverTarget() {
       const targets = await CDP.List({ host: CDP_HOST, port });
       if (!targets || targets.length === 0) continue;
 
-      const mainTarget = targets.find(t =>
-        t.url?.includes('/c/') ||
-        t.url?.includes('workbench.html') ||
-        t.title?.includes('Antigravity') ||
-        t.title?.includes('workbench')
-      );
-      if (mainTarget) return { port, target: mainTarget };
-
-      const jetski = targets.find(t =>
-        t.url?.includes('jetski') || t.title === 'Launchpad'
-      );
-      if (jetski) return { port, target: jetski };
-
-      const page = targets.find(t => t.type === 'page');
-      if (page) return { port, target: page };
+      const target = selectTarget(targets);
+      if (target) return { port, target };
     } catch {
       // Port not available, try next
     }
@@ -85,7 +98,6 @@ export async function connectCDP() {
 
   client.on('disconnect', () => {
     log('CDP', 'Disconnected');
-    track('cdp_disconnected');
     state.cdpClient = null;
     state.cdpContexts = [];
     state.preferredContextId = null;
@@ -122,7 +134,6 @@ export function scheduleReconnect() {
     try {
       await connectCDP();
       log('CDP', 'Reconnected successfully');
-      track('cdp_reconnected');
     } catch (e) {
       console.debug('[CDP] Reconnect failed:', e.message);
       scheduleReconnect();

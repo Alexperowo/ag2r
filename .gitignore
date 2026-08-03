@@ -23,6 +23,18 @@ venv/
 *.tmp
 *.swp
 *.swo
+# Legacy local identifier from releases that supported telemetry
+.ag2r-telemetry-id
+certs/
+logs/
+.runtime/
+
+# Local audit and analysis artifacts
+ag2r-codebase.txt
+ask_*.js
+audit_*.md
+*_audit_result.md
+consilium*.js
 
 # Editors
 .vscode/

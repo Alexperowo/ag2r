@@ -10,13 +10,17 @@ import {
 } from './dom.js';
 
 export function updateConnectionStatus(status) {
+  const previousStatus = connectionDot.getAttribute('data-status');
   connectionDot.setAttribute('data-status', status);
   const titles = {
     connected: 'Connected',
     reconnecting: 'Reconnecting...',
     disconnected: 'Disconnected',
   };
-  connectionDot.title = titles[status] || status;
+  const label = titles[status] || status;
+  connectionDot.title = label;
+  const statusText = document.getElementById('connection-status-text');
+  if (statusText && previousStatus !== status) statusText.textContent = label;
 }
 
 export function showEmptyState() {
@@ -48,6 +52,7 @@ export function initMisc() {
     runningTasksList.classList.toggle('collapsed', state.runningTasksCollapsed);
     runningTasks.querySelector('.running-tasks-arrow')
       ?.classList.toggle('rotated', state.runningTasksCollapsed);
+    runningTasksHeader.setAttribute('aria-expanded', String(!state.runningTasksCollapsed));
   });
 
   if (window.visualViewport) {

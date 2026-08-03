@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+  <a class="skip-link" href="#chat-area">Skip to chat</a>
   <div id="app" class="app">
 
     <!-- Header — minimal, AG's captured components handle sidebar toggles -->
@@ -28,15 +29,14 @@
       </button>
       <img src="/ag2r-icon.png" alt="AG2R" class="header-icon" width="32" height="32">
       <h1 class="header-title">AG2R</h1>
-      <div id="connection-status" class="connection-dot" data-status="disconnected" title="Disconnected"></div>
+      <div id="connection-status" class="connection-dot" data-status="disconnected" title="Disconnected" role="status" aria-live="polite">
+        <span id="connection-status-text" class="visually-hidden">Disconnected</span>
+      </div>
       <button id="zoom-toggle-btn" class="icon-btn" aria-label="Toggle Zoom" title="Zoom Level">
         <span class="material-symbols-rounded">zoom_in</span>
       </button>
       <button id="tts-toggle-btn" class="icon-btn" aria-label="Toggle Voice" title="Voice Output">
         <span class="material-symbols-rounded">volume_up</span>
-      </button>
-      <button id="ag-power-btn" class="icon-btn power-btn" aria-label="Antigravity Power" title="Power Control">
-        <span class="material-symbols-rounded">power_settings_new</span>
       </button>
       <button id="review-toggle" class="icon-btn" aria-label="Toggle review panel" title="Review">
         <span class="material-symbols-rounded">right_panel_open</span>
@@ -74,7 +74,7 @@
     </button>
 
     <!-- Quick-action shortcuts -->
-    <div id="quick-actions" class="quick-actions">
+    <div id="quick-actions" class="quick-actions" role="group" aria-label="Quick actions">
       <button class="quick-action-chip" data-message="Continue">Continue</button>
     </div>
 
@@ -82,7 +82,7 @@
     <footer id="input-bar" class="input-bar">
       <!-- Running tasks strip (inside input bar so ResizeObserver tracks its height) -->
       <div id="running-tasks" class="running-tasks hidden">
-        <button id="running-tasks-header" class="running-tasks-header">
+        <button id="running-tasks-header" class="running-tasks-header" aria-expanded="true" aria-controls="running-tasks-list">
           <span id="running-tasks-count" class="running-tasks-count"></span>
           <span class="material-symbols-rounded running-tasks-arrow">expand_less</span>
         </button>
@@ -99,6 +99,7 @@
           autocorrect="on"
           autocapitalize="sentences"
           enterkeyhint="enter"
+          aria-label="Message"
         ></textarea>
         <div class="input-controls">
           <div class="input-left-actions">
@@ -106,7 +107,7 @@
             <button id="attach-btn" class="attach-btn" type="button" aria-label="Add context">
               <span class="material-symbols-rounded">add</span>
             </button>
-            <button id="model-chip" class="model-chip" type="button" data-ag-click-id="model:0" data-ag-click-label="">
+            <button id="model-chip" class="model-chip" type="button" data-ag-click-id="model:0" data-ag-click-label="" aria-label="Choose model">
               <span class="model-chip-text"></span>
               <span class="material-symbols-rounded model-chip-chevron">expand_more</span>
             </button>
@@ -129,7 +130,7 @@
       <div id="dropdown-content" class="dropdown-content"></div>
     </div>
     <!-- Permission banner overlay -->
-    <div id="permission-overlay" class="permission-overlay hidden">
+    <div id="permission-overlay" class="permission-overlay hidden" role="dialog" aria-modal="true" aria-label="Permission required">
       <div id="permission-backdrop" class="permission-backdrop"></div>
       <div id="permission-content" class="permission-content"></div>
     </div>
@@ -148,7 +149,7 @@
           </svg>
           Sign in with Google
         </button>
-        <p id="auth-status" class="auth-status"></p>
+        <p id="auth-status" class="auth-status" role="status" aria-live="polite" tabindex="-1"></p>
         <div class="auth-fallback-section">
           <p class="auth-fallback-title">Connecting from mobile/remote?</p>
           <p class="auth-fallback-desc">If Google Sign-In fails with a 'localhost refused to connect' error, copy that failed localhost URL from your browser's address bar and paste it below:</p>
@@ -160,28 +161,28 @@
       </div>
     </div>
     <!-- Settings full-screen overlay -->
-    <div id="settings-overlay" class="settings-overlay hidden">
+    <div id="settings-overlay" class="settings-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
       <div class="settings-header">
         <button id="settings-back" class="settings-back-btn" aria-label="Back">
           <span class="material-symbols-rounded">arrow_back</span>
         </button>
-        <span class="settings-title">Settings</span>
+        <span id="settings-title" class="settings-title">Settings</span>
       </div>
       <div id="settings-content" class="settings-content"></div>
     </div>
     <!-- Scheduled Tasks full-screen overlay -->
-    <div id="scheduled-tasks-overlay" class="scheduled-tasks-overlay hidden">
+    <div id="scheduled-tasks-overlay" class="scheduled-tasks-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="scheduled-tasks-title">
       <div class="scheduled-tasks-header">
         <button id="scheduled-tasks-back" class="settings-back-btn" aria-label="Back">
           <span class="material-symbols-rounded">arrow_back</span>
         </button>
-        <span class="settings-title">Scheduled Tasks</span>
+        <span id="scheduled-tasks-title" class="settings-title">Scheduled Tasks</span>
       </div>
       <div id="scheduled-tasks-content" class="scheduled-tasks-content"></div>
       <div id="scheduled-tasks-dialog" class="scheduled-tasks-dialog hidden"></div>
     </div>
     <!-- Text input modal (for scheduled tasks form fields) -->
-    <div id="text-input-modal" class="text-input-modal hidden">
+    <div id="text-input-modal" class="text-input-modal hidden" role="dialog" aria-modal="true" aria-labelledby="text-input-label">
       <div id="text-input-backdrop" class="text-input-backdrop"></div>
       <div class="text-input-card">
         <label id="text-input-label" class="text-input-label"></label>
@@ -199,7 +200,7 @@
     </button>
 
     <!-- Comment input modal -->
-    <div id="comment-modal" class="comment-modal hidden">
+    <div id="comment-modal" class="comment-modal hidden" role="dialog" aria-modal="true" aria-label="Add comment">
       <div id="comment-modal-backdrop" class="dropdown-backdrop"></div>
       <div class="comment-modal-content">
         <div class="comment-modal-header">
@@ -216,7 +217,7 @@
     </div>
 
     <!-- Comment review modal (view/edit/delete queued comments) -->
-    <div id="comment-review-modal" class="comment-modal hidden">
+    <div id="comment-review-modal" class="comment-modal hidden" role="dialog" aria-modal="true" aria-label="Queued comments">
       <div id="comment-review-backdrop" class="dropdown-backdrop"></div>
       <div class="comment-review-content">
         <div class="comment-modal-header">
@@ -233,7 +234,7 @@
     </div>
 
     <!-- Artifact Modal Viewer -->
-    <div id="artifact-modal" class="artifact-modal hidden">
+    <div id="artifact-modal" class="artifact-modal hidden" role="dialog" aria-modal="true" aria-labelledby="artifact-modal-title">
       <div class="artifact-modal-backdrop"></div>
       <div class="artifact-modal-container">
         <div class="artifact-modal-header">

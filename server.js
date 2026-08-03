@@ -2,6 +2,7 @@
 import express from 'express';
 import { createServer as createHttpsServer } from 'https';
 import { createServer as createHttpServer } from 'http';
+import { pathToFileURL } from 'url';
 import { WebSocketServer } from 'ws';
 import cookieParser from 'cookie-parser';
 import compression from 'compression';
@@ -20,72 +21,49 @@ import { connectCDP, scheduleReconnect } from './src/cdp.js';
 import { startPolling, stopPolling } from './src/snapshot.js';
 import { broadcast, broadcastStatus } from './src/broadcast.js';
 import { registerRoutes } from './src/routes/index.js';
-import { track, startSession, endSession } from './src/telemetry.js';
+import {
+  getClientIp,
+  rateLimitMiddleware,
+  SlidingWindowRateLimiter,
+} from './src/security.js';
 
 const app = express();
+app.disable('x-powered-by');
 app.use(compression());
 app.use(express.json());
 app.use(cookieParser(SESSION_SECRET));
 
-// --- Centralized API Error Tracking ---
 app.use((req, res, next) => {
-  const _json = res.json.bind(res);
-  res.json = function (body) {
-    if (res.statusCode >= 500) {
-      track('api_error', { endpoint: req.path, status: res.statusCode });
-    }
-    return _json(body);
-  };
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('X-Frame-Options', 'DENY');
+  res.set('Referrer-Policy', 'no-referrer');
+  res.set('Permissions-Policy', 'camera=(), geolocation=(), microphone=(self)');
   next();
 });
 
 if (TUNNEL_ENABLED) {
-  app.set('trust proxy', true);
+  app.set('trust proxy', 'loopback');
 }
 
-// --- Rate Limiting Configuration ---
-const RATE_LIMIT_CONFIG = {
-  windowMs: 60 * 1000,        // 1 minute window
-  maxRequests: 100,            // max requests per window
-  cleanupIntervalMs: 5 * 60 * 1000  // cleanup every 5 minutes
-};
-
-const rateLimits = new Map();
-
-function cleanupRateLimits() {
-  const now = Date.now();
-  for (const [ip, timestamps] of rateLimits.entries()) {
-    const valid = timestamps.filter(t => now - t < RATE_LIMIT_CONFIG.windowMs);
-    if (valid.length === 0) {
-      rateLimits.delete(ip);
-    } else {
-      rateLimits.set(ip, valid);
-    }
-  }
-}
-
-setInterval(cleanupRateLimits, RATE_LIMIT_CONFIG.cleanupIntervalMs);
+const LOGIN_RATE_LIMIT = new SlidingWindowRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  maxRequests: 10,
+});
+const ACTION_RATE_LIMIT = new SlidingWindowRateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 120,
+});
+const WS_RATE_LIMIT = new SlidingWindowRateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 30,
+});
+const rateLimitOptions = { trustLoopbackProxy: TUNNEL_ENABLED };
+const limitLogin = rateLimitMiddleware(LOGIN_RATE_LIMIT, rateLimitOptions);
+const limitAction = rateLimitMiddleware(ACTION_RATE_LIMIT, rateLimitOptions);
 
 app.use((req, res, next) => {
-  const protectedPaths = ['/login', '/click', '/send', '/eval'];
-  if (req.method === 'POST' && protectedPaths.includes(req.path)) {
-    const ip = req.ip || req.connection.remoteAddress;
-    const now = Date.now();
-    
-    if (!rateLimits.has(ip)) {
-      rateLimits.set(ip, []);
-    }
-    
-    const timestamps = rateLimits.get(ip).filter(t => now - t < RATE_LIMIT_CONFIG.windowMs);
-    
-    if (timestamps.length >= RATE_LIMIT_CONFIG.maxRequests) {
-      log('Security', `Rate limit exceeded for IP: ${ip} on path ${req.path}`);
-      return res.status(429).json({ error: 'Too many requests, please try again later.' });
-    }
-    
-    timestamps.push(now);
-    rateLimits.set(ip, timestamps);
-  }
+  if (req.method === 'POST' && req.path === '/login') return limitLogin(req, res, next);
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return limitAction(req, res, next);
   next();
 });
 
@@ -94,12 +72,25 @@ registerRoutes(app);
 
 // Global Error Handler
 app.use((err, req, res, next) => {
+  if (err?.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'Invalid JSON body' });
+  }
+  if (err?.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Request body is too large' });
+  }
+
   console.error('[Express] Uncaught error:', err);
-  track('api_error', { endpoint: req.path, status: 500, error: err.message });
   res.status(500).json({ error: 'Internal Server Error' });
 });
 
-async function start() {
+export async function start() {
+  const cleanupRateLimitsTimer = setInterval(() => {
+    LOGIN_RATE_LIMIT.cleanup();
+    ACTION_RATE_LIMIT.cleanup();
+    WS_RATE_LIMIT.cleanup();
+  }, 5 * 60 * 1000);
+  cleanupRateLimitsTimer.unref?.();
+
   let server;
   if (HTTP_ONLY) {
     server = createHttpServer(app);
@@ -112,6 +103,14 @@ async function start() {
   const wss = new WebSocketServer({ server });
 
   wss.on('connection', (ws, req) => {
+    const ip = getClientIp(req, rateLimitOptions);
+    const rateLimit = WS_RATE_LIMIT.consume(ip);
+    if (!rateLimit.allowed) {
+      log('Security', `WebSocket connection limit exceeded for IP: ${ip}`);
+      ws.close(1013, 'Too many connection attempts');
+      return;
+    }
+
     if (AUTH_ENABLED) {
       const cookies = parseCookies(req.headers.cookie || '');
       const signed = cookieParser.signedCookie(cookies.ag2r_token || '', SESSION_SECRET);
@@ -153,14 +152,21 @@ async function start() {
     });
   });
 
-  server.listen(PORT, () => {
-    log('Server', `AG2R running on https://localhost:${PORT}`);
-    if (TUNNEL_ENABLED && TUNNEL_URL) {
-      log('Server', `Tunnel URL: ${TUNNEL_URL}`);
-    }
-    startSession();
+  await new Promise((resolve, reject) => {
+    const onError = error => reject(error);
+    server.once('error', onError);
+    server.listen(PORT, () => {
+      server.off('error', onError);
+      resolve();
+    });
   });
 
+  const actualPort = server.address()?.port ?? PORT;
+  const protocol = HTTP_ONLY ? 'http' : 'https';
+  log('Server', `AG2R running on ${protocol}://localhost:${actualPort}`);
+  if (TUNNEL_ENABLED && TUNNEL_URL) {
+    log('Server', `Tunnel URL: ${TUNNEL_URL}`);
+  }
   try {
     await connectCDP();
   } catch (e) {
@@ -171,23 +177,45 @@ async function start() {
 
   startPolling();
 
-  const shutdown = () => {
+  let shuttingDown = false;
+  const shutdown = async () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
     log('Server', 'Shutting down...');
-    endSession();
     stopPolling();
+    clearInterval(cleanupRateLimitsTimer);
     if (state.reconnectTimer) clearTimeout(state.reconnectTimer);
-    if (state.cdpClient) state.cdpClient.close();
-    for (const ws of state.wsClients) ws.close();
-    wss.close();
-    server.close(() => process.exit(0));
-    setTimeout(() => process.exit(1), 3000);
+    if (state.cdpClient) await state.cdpClient.close().catch(() => {});
+    for (const ws of state.wsClients) ws.terminate();
+    state.wsClients.clear();
+
+    await new Promise(resolve => wss.close(() => resolve()));
+    await new Promise((resolve, reject) => {
+      server.close(error => error ? reject(error) : resolve());
+    });
   };
 
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  const handleSignal = () => {
+    const forceExitTimer = setTimeout(() => process.exit(1), 3000);
+    forceExitTimer.unref?.();
+    shutdown()
+      .then(() => process.exit(0))
+      .catch(error => {
+        console.error('[Server] Shutdown failed:', error);
+        process.exit(1);
+      });
+  };
+
+  process.once('SIGINT', handleSignal);
+  process.once('SIGTERM', handleSignal);
+
+  return { app, server, wss, shutdown };
 }
 
-start().catch(e => {
-  console.error('Fatal:', e);
-  process.exit(1);
-});
+const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMainModule) {
+  start().catch(e => {
+    console.error('Fatal:', e);
+    process.exit(1);
+  });
+}

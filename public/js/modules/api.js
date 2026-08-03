@@ -16,13 +16,3 @@ export async function fetchAPI(url, opts = {}) {
 
   return res;
 }
-
-export function track(event, payload = {}) {
-  try {
-    fetch('/telemetry', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ event, ...payload }),
-    });
-  } catch {}
-}

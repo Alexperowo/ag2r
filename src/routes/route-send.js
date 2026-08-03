@@ -1,7 +1,6 @@
 import { state } from '../state.js';
 import { log } from '../utils.js';
 import { evaluateInBrowser } from '../cdp.js';
-import { track } from '../telemetry.js';
 
 export function registerSendRoute(app) {
   let lastSentMessage = { text: '', time: 0 };
@@ -107,7 +106,6 @@ export function registerSendRoute(app) {
       const result = await evaluateInBrowser(script);
       log('Send', `Injection result: ${JSON.stringify(result)}`);
       if (result && result.ok) {
-        track('message_sent');
       }
       res.json(result || { ok: true });
     } catch (e) {

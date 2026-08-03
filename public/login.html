@@ -6,35 +6,34 @@
   <meta name="description" content="AG2R — Login">
   <meta name="theme-color" content="#090e17">
   <title>AG2R — Login</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body class="login-body">
-  <div class="login-container">
+  <main class="login-container">
     <div class="login-card">
       <h1 class="login-title">AG2R</h1>
-      <p class="login-subtitle">Antigravity 2.0 Remote</p>
+      <p class="login-subtitle">Antigravity Remote Interface</p>
 
       <form id="login-form" class="login-form">
         <div class="input-group">
+          <label class="visually-hidden" for="password-input">Passcode</label>
           <input
             type="password"
             id="password-input"
             class="login-input"
             placeholder="Enter passcode"
             autocomplete="current-password"
+            aria-describedby="login-error"
             required
           >
         </div>
-        <div id="login-error" class="login-error" hidden></div>
+        <div id="login-error" class="login-error" role="alert" aria-live="assertive" hidden></div>
         <button type="submit" id="login-btn" class="login-btn">
           Connect
         </button>
       </form>
     </div>
-  </div>
+  </main>
 
   <script>
     const form = document.getElementById('login-form');

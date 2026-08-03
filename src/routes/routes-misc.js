@@ -1,6 +1,5 @@
 import fs from 'fs';
 import multer from 'multer';
-import { exec } from 'child_process';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
@@ -8,7 +7,6 @@ import { state } from '../state.js';
 import { MAX_UPLOAD_SIZE } from '../config.js';
 import { log } from '../utils.js';
 import { evaluateInBrowser, evaluateAcrossContexts } from '../cdp.js';
-import { track, readEvents } from '../telemetry.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import { DISCOVER_SCRIPT } from '../cdp/scripts/discover-script.js';
@@ -143,6 +141,37 @@ export function registerMiscRoutes(app) {
     }
   });
 
+  app.post('/permission-writein', async (req, res) => {
+    const { text } = req.body || {};
+    if (typeof text !== 'string' || !text.trim()) {
+      return res.status(400).json({ error: 'text is required' });
+    }
+    if (text.length > 5000) {
+      return res.status(413).json({ error: 'text is too long' });
+    }
+    if (!state.cdpClient) {
+      return res.status(503).json({ error: 'CDP not connected' });
+    }
+
+    try {
+      const result = await evaluateAcrossContexts(`(() => {
+        const rg = document.querySelector('[role="radiogroup"]');
+        if (!rg) return { ok: false, reason: 'no_radiogroup' };
+        const ta = rg.querySelector('textarea');
+        if (!ta) return { ok: false, reason: 'no_textarea' };
+        ta.focus();
+        const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+        setter.call(ta, ${JSON.stringify(text)});
+        ta.dispatchEvent(new Event('input', { bubbles: true }));
+        ta.dispatchEvent(new Event('change', { bubbles: true }));
+        return { ok: true, textLength: ta.value.length };
+      })()`);
+      res.json(result || { ok: false, reason: 'null_result' });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.post('/upload', upload.single('image'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'No image file provided' });
@@ -213,7 +242,6 @@ export function registerMiscRoutes(app) {
         return res.status(500).json({ error: result?.reason || 'Injection failed' });
       }
 
-      track('image_uploaded');
       res.json(result);
     } catch (e) {
       log('Upload', `Error: ${e.message}`);
@@ -256,40 +284,6 @@ export function registerMiscRoutes(app) {
 
 
 
-  // --- Client Telemetry Endpoint ---
-  app.post('/telemetry', (req, res) => {
-    const { event, ...payload } = req.body || {};
-    if (!event || typeof event !== 'string') {
-      return res.status(400).json({ error: 'event is required' });
-    }
-    const allowed = new Set([
-      'comment_added', 'comment_edited', 'comment_deleted', 'comments_sent',
-      'voice_input_used', 'artifact_viewed', 'client_error',
-      'model_changed', 'branch_changed', 'worktree_changed',
-      'quick_action_used',
-    ]);
-    if (!allowed.has(event)) {
-      return res.status(400).json({ error: 'unknown event' });
-    }
-    track(event, payload);
-    res.json({ ok: true });
-  });
-
-  // --- Telemetry Dashboard ---
-  app.get('/telemetry/events', async (req, res) => {
-    try {
-      const events = await readEvents();
-      res.json(events);
-    } catch (e) {
-      res.status(500).json({ error: e.message });
-    }
-  });
-
-  app.get('/telemetry/dashboard', (req, res) => {
-    const projectRoot = path.resolve(__dirname, '..');
-    res.sendFile(path.join(projectRoot, '.telemetry', 'dashboard.html'));
-  });
-
   app.use((err, req, res, next) => {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
@@ -305,12 +299,12 @@ export function registerMiscRoutes(app) {
 
   app.post('/speak', async (req, res) => {
     const { text } = req.body;
-    if (!text) return res.status(400).json({ error: 'no text' });
+    if (!text || typeof text !== 'string') return res.status(400).json({ error: 'no text' });
+    if (text.length > 10000) return res.status(413).json({ error: 'text is too long' });
     const candidatePaths = [
       process.env.TTS_SCRIPT_PATH,
       path.join(__dirname, '..', 'speak.py'),
       path.join(os.homedir(), '.gemini', 'antigravity', 'tts', 'speak.py'),
-      path.join(os.homedir(), '.gemini', 'antigravity', 'brain', '56deceb7-eb8b-4e8f-9213-46aaee40ab29', 'scratch', 'speak.py'),
     ].filter(Boolean);
 
     let pyScript = candidatePaths.find(p => fs.existsSync(p));

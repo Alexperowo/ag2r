@@ -3,29 +3,26 @@ import os from 'os';
 import path from 'path';
 import cookieParser from 'cookie-parser';
 import { state } from '../state.js';
-import { APP_PASSWORD, SESSION_SECRET, AUTH_ENABLED } from '../config.js';
-import { authToken, log } from '../utils.js';
+import { APP_PASSWORD, SESSION_SECRET, AUTH_ENABLED, HTTP_ONLY, TUNNEL_ENABLED } from '../config.js';
+import { authToken, log, secureEqual } from '../utils.js';
 import { broadcast } from '../broadcast.js';
 import { evaluateInBrowser } from '../cdp.js';
-import { track } from '../telemetry.js';
 
-const PUBLIC_PATHS = ['/login', '/login.html', '/favicon.ico', '/internal/auth-url', '/health'];
+const PUBLIC_PATHS = ['/login', '/login.html', '/favicon.ico', '/health'];
+const AUTH_COOKIE_OPTIONS = {
+  signed: true,
+  httpOnly: true,
+  maxAge: 30 * 24 * 60 * 60 * 1000,
+  sameSite: 'strict',
+  secure: !HTTP_ONLY || TUNNEL_ENABLED,
+  path: '/',
+};
 
 export function authMiddleware(req, res, next) {
   if (!AUTH_ENABLED) return next();
 
   if (PUBLIC_PATHS.some(p => req.path === p) || req.path.startsWith('/css/')) {
     return next();
-  }
-
-  if (req.query.key === APP_PASSWORD) {
-    res.cookie('ag2r_token', authToken(), {
-      signed: true,
-      httpOnly: true,
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-      sameSite: 'lax',
-    });
-    return res.redirect(req.path);
   }
 
   const token = req.signedCookies?.ag2r_token;
@@ -40,23 +37,21 @@ export function authMiddleware(req, res, next) {
 export function registerAuthRoutes(app) {
   app.post('/login', (req, res) => {
     const { password } = req.body;
-    if (password !== APP_PASSWORD) {
+    if (!secureEqual(password ?? '', APP_PASSWORD)) {
       return res.status(401).json({ error: 'Invalid password' });
     }
 
-    res.cookie('ag2r_token', authToken(), {
-      signed: true,
-      httpOnly: true,
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-      sameSite: 'lax',
-    });
+    res.cookie('ag2r_token', authToken(), AUTH_COOKIE_OPTIONS);
 
-    track('login');
     res.json({ ok: true });
   });
 
   app.post('/logout', (req, res) => {
-    res.clearCookie('ag2r_token');
+    res.clearCookie('ag2r_token', {
+      sameSite: AUTH_COOKIE_OPTIONS.sameSite,
+      secure: AUTH_COOKIE_OPTIONS.secure,
+      path: AUTH_COOKIE_OPTIONS.path,
+    });
     res.json({ ok: true });
   });
 

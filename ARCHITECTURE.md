@@ -1,44 +1,55 @@
-# AG2R Environment Architecture & Regulations
+# Архитектура AG2R
 
-This document establishes the architecture, deployment targets, and operational rules for the AG2R setup.
+## Поток данных
 
----
+1. Antigravity запускается с CDP только на loopback-интерфейсе.
+2. `src/cdp.js` обнаруживает подходящую страницу IDE и управляет контекстами выполнения.
+3. `src/snapshot.js` регулярно получает очищенный снимок интерфейса.
+4. `src/broadcast.js` сообщает подключённым клиентам об изменениях через WebSocket.
+5. PWA запрашивает новый снимок и отображает его на мобильном устройстве.
+6. Пользовательские действия проходят через проверяемые маршруты в `src/routes/` и выполняются в IDE через CDP.
 
-## 🌐 Target Architecture
+## Границы доверия
 
-*   **Primary Production Target (The Server)**:
-    *   **Host IP**: `<remote-server-ip>` (accessible via Tailscale).
-    *   **Remote Web Interface (AG2R)**: Runs on port `3000` (HTTPS) as the systemd service `ag2r.service`.
-    *   **Antigravity Session**: Runs on the server as an Electron GUI application on headless Xvfb display `:99` managed by systemd service `antigravity-gui.service`.
-    *   **Debugger Port**: Antigravity exposes the Chrome DevTools Protocol (CDP) on port `9000` (localhost only).
+- CDP слушает `127.0.0.1` и не должен публиковаться в локальную сеть.
+- Мобильный HTTPS-сервер доступен в локальной сети и защищён паролем и подписанной cookie.
+- Все изменяющие HTTP-запросы и WebSocket-подключения ограничиваются по частоте.
+- Сертификаты, `.env`, журналы и runtime PID не входят в Git.
+- AG2R не отправляет внешнюю телеметрию.
+- API артефактов читает файлы только из каталога Antigravity brain; произвольные пути запрещены.
 
-*   **Local Development Target (The Laptop)**:
-    *   **Host IP**: `<local-laptop-ip>` (accessible via Tailscale).
-    *   **Local Web Interface**: May run on port `3001` (for temporary testing only).
-    *   **Operational Rule**: **DO NOT run or rely on the local laptop AG2R server for active usage.** The user connects to the remote server on port `3000` from their mobile phone. Running a parallel instance on the laptop is unnecessary and creates confusion.
+## Серверные модули
 
----
+- `server.js` — сборка Express, WebSocket и управляемый запуск/остановка;
+- `src/config.js` — параметры среды и безопасные значения по умолчанию;
+- `src/security.js` — определение IP и sliding-window rate limiting;
+- `src/cdp.js` — подключение, выбор контекста и восстановление CDP;
+- `src/snapshot.js` — polling, хеширование и кэш последнего снимка;
+- `src/routes/` — узкие HTTP-маршруты для конкретных действий.
 
-## 🚀 Deployment & Sync Regulations
+## Клиентские модули
 
-To deploy updates from the local repository on the laptop to the remote production server:
+- `public/js/app.js` — инициализация;
+- `public/js/modules/ws.js` — WebSocket и переподключение;
+- `public/js/modules/snapshot*.js` — безопасное отображение снимков;
+- `public/js/modules/input.js` — отправка и остановка генерации;
+- `public/js/modules/auth.js` — авторизация Antigravity;
+- `public/js/modules/stt.js` и `tts.js` — голосовой ввод и вывод;
+- `public/sw.js` — кэширование только статических ресурсов.
 
-1.  **Sync Files**:
-    Use `rsync` to copy modified files, excluding keys, configurations, and build modules:
-    ```bash
-    rsync -az --delete --exclude='.git' --exclude='node_modules' --exclude='certs' --exclude='.env' /home/ging/prog/ag2r/ user@<remote-server-ip>:/path/to/ag2r/
-    ```
+## Запуск в Windows
 
-2.  **Restart remote service**:
-    ```bash
-    ssh user@<remote-server-ip> "systemctl restart ag2r"
-    ```
+Windows-лаунчер использует PowerShell 5.1 и ярлыки `.lnk`. Он:
 
----
+- создаёт защищённый `.env` при первом запуске;
+- не закрывает уже открытую Antigravity с потенциально несохранённой работой;
+- запускает CDP только на loopback;
+- записывает журналы в `logs/`;
+- останавливает только процесс, который был запущен данным проектом и прошёл проверку идентичности.
 
-## ⚡ Sleep / Wake Control Integration Plan
+## Правила изменений
 
-To implement Sleep/Wake controls for the remote Antigravity instance:
-1.  **systemd Change**: Replace `Requires=antigravity-gui.service` with `Wants=antigravity-gui.service` in `/etc/systemd/system/ag2r.service` on the server so AG2R remains online when the agent is asleep.
-2.  **Backend Endpoints**: Add `/api/antigravity/status`, `/api/antigravity/sleep`, and `/api/antigravity/wakeup` to `src/routes-misc.js` (executes systemctl control commands).
-3.  **Frontend Controls**: Implement a power state button/toggle in the header to sleep/wake the agent and visually represent its status.
+- Пользовательская функция должна иметь проверяемый серверный маршрут; скрытый raw-eval не используется в production.
+- Обновление DOM-селекторов сопровождается ручным end-to-end тестом с актуальной Antigravity.
+- Новая логика безопасности сопровождается тестами.
+- GitHub не является средой выполнения: сначала проверяется локальная копия, затем изменения публикуются отдельным действием.

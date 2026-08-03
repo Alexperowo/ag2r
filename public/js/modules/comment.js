@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { fetchAPI, track } from './api.js';
+import { fetchAPI } from './api.js';
 import {
   commentFab,
   commentModal,
@@ -95,7 +95,6 @@ export async function sendQueuedComments() {
     });
     const result = await resp.json();
     console.debug('[Comment] Send result:', result);
-    track('comments_sent', { count: fullMessage.split('* >').length - 1 });
   } catch (e) {
     console.error('[Comment] Send failed:', e);
   }
@@ -191,7 +190,6 @@ export function renderReviewList() {
         if (val) {
           state.queuedComments[idx].comment = val;
           saveComments();
-          track('comment_edited');
         }
         renderReviewList();
         updateCommentBadge();
@@ -208,7 +206,6 @@ export function renderReviewList() {
       const idx = parseInt(btn.dataset.idx);
       state.queuedComments.splice(idx, 1);
       saveComments();
-      track('comment_deleted');
       renderReviewList();
       updateCommentBadge();
       if (state.queuedComments.length === 0) closeReviewModal();
@@ -259,7 +256,6 @@ export function initComment() {
       comment: commentText,
     });
     saveComments();
-    track('comment_added');
     closeCommentModal();
     window.getSelection()?.removeAllRanges();
     updateCommentBadge();

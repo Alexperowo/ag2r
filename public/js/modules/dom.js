@@ -80,4 +80,3 @@ export const authSigninBtn = document.getElementById('auth-signin-btn');
 export const authStatus = document.getElementById('auth-status');
 export const authCallbackUrlInput = document.getElementById('auth-callback-url-input');
 export const authCallbackSubmitBtn = document.getElementById('auth-callback-submit-btn');
-export const agPowerBtn = document.getElementById('ag-power-btn');

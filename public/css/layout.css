@@ -124,22 +124,3 @@
   opacity: 1;
   pointer-events: auto;
 }
-
-/* ── Power Button Statuses ── */
-.power-btn {
-  color: var(--text-muted);
-  transition: color 0.2s, opacity 0.2s;
-}
-
-.power-btn.active {
-  color: var(--green, #22c55e);
-}
-
-.power-btn.inactive {
-  color: var(--red, #ef4444);
-}
-
-.power-btn.loading {
-  opacity: 0.5;
-  pointer-events: none;
-}

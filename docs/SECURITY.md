@@ -1,179 +1,32 @@
-# AG2R Security Guidelines
+# Безопасность AG2R
 
-## 🔐 Critical Security Practices
+AG2R управляет IDE и поэтому должен рассматриваться как чувствительный локальный сервис.
 
-### 1. Password Management
+## Безопасная конфигурация
 
-**NEVER use the default password in production.**
+- Авторизация включена по умолчанию.
+- Лаунчер создаёт случайные `APP_PASSWORD` и `SESSION_SECRET`.
+- CDP привязан к `127.0.0.1`.
+- Внешняя телеметрия отсутствует.
+- Внешний туннель выключен по умолчанию.
 
-On first run, AG2R generates a cryptographically secure random password if none is provided. For production or tunnel access:
+Не добавляйте `.env`, `certs/`, `logs/` и `.runtime/` в Git. Не используйте один пароль AG2R на нескольких публично доступных установках.
 
-```bash
-# Generate a strong password
-openssl rand -base64 24
+## Сеть
 
-# Add to .env
-APP_PASSWORD="your-generated-password-here"
-SESSION_SECRET=$(openssl rand -hex 32)
-```
+Обычный сценарий — компьютер и телефон в одной доверенной Wi-Fi сети. Самоподписанный сертификат шифрует соединение, но не подтверждается публичным центром сертификации. Проверяйте адрес компьютера перед принятием предупреждения браузера.
 
-**Password Requirements:**
-- Minimum 16 characters
-- Mix of uppercase, lowercase, numbers, and symbols
-- Never reuse passwords from other services
-- Store in a password manager
+Не перенаправляйте порт AG2R из роутера в интернет. Для удалённого доступа нужен отдельный доверенный туннель, его собственная авторизация и корректная настройка proxy trust.
 
-### 2. Environment Variables
+## Защитные механизмы
 
-**NEVER commit `.env` files to Git.**
+- подписанная `HttpOnly` cookie с `SameSite=Strict`;
+- ограничение попыток входа, изменяющих запросов и WebSocket-подключений;
+- базовые защитные HTTP-заголовки;
+- ограничение размера JSON, изображений и текста озвучки;
+- запрет произвольного чтения файлов;
+- production-маршруты выполняют только заранее определённые действия.
 
-The `.env` file contains sensitive credentials. Always:
-- Copy `.env.example` to `.env` before first run
-- Add `.env` to `.gitignore` (already included)
-- Use different passwords for development and production
+## Сообщение об уязвимости
 
-### 3. Debug Mode
-
-**NEVER enable DEBUG_MODE in production.**
-
-The `/eval` endpoint allows arbitrary JavaScript execution in the browser context. This is only for local development debugging.
-
-```bash
-# In .env - ALWAYS false for production/tunnel
-DEBUG_MODE=false
-```
-
-### 4. Network Exposure
-
-#### Local Network Only (Recommended)
-For safest operation, use only on local Wi-Fi:
-```bash
-node server.js
-# Access via https://192.168.x.x:3000
-```
-
-#### Quick Tunnels (Temporary)
-For temporary remote access:
-- Set a strong password FIRST
-- Remember: URL changes on each restart
-- Monitor access logs
-
-#### Dedicated Tunnels (Production)
-For permanent remote access:
-- Use Cloudflare Tunnel with custom domain
-- Enable Cloudflare's WAF (Web Application Firewall)
-- Set up rate limiting
-- Consider adding Cloudflare Access for additional auth
-
-### 5. Rate Limiting
-
-Enable rate limiting to prevent brute force attacks:
-
-```bash
-# In .env
-RATE_LIMIT_WINDOW_MS=900000  # 15 minutes
-RATE_LIMIT_MAX_REQUESTS=100   # 100 requests per window
-```
-
-Adjust based on your usage patterns.
-
-### 6. HTTPS & Certificates
-
-AG2R uses self-signed HTTPS certificates by default:
-- Accept the certificate warning on first connection
-- For production, consider using Let's Encrypt certificates
-- Never disable HTTPS
-
-### 7. CDP Security
-
-Chrome DevTools Protocol (CDP) provides deep browser access:
-- Only connect to trusted Antigravity instances
-- Never expose CDP port (9000) to the internet
-- Keep CDP on localhost (127.0.0.1)
-
-```bash
-# Correct: localhost only
-CDP_HOST=127.0.0.1
-
-# WRONG: Never do this
-CDP_HOST=0.0.0.0  # ❌ Exposes CDP to network
-```
-
-### 8. Session Security
-
-Sessions expire after 30 days by default. For enhanced security:
-- Clear browser cookies when done
-- Use private/incognito mode on shared devices
-- Monitor active sessions in browser dev tools
-
-### 9. Monitoring & Logging
-
-Watch for suspicious activity:
-- Failed login attempts in server logs
-- Unusual request patterns
-- Unexpected WebSocket connections
-
-```bash
-# Check logs regularly
-tail -f ag2r.log | grep -E "(failed|error|unauthorized)"
-```
-
-### 10. Updates & Dependencies
-
-Keep AG2R updated:
-```bash
-# Pull latest changes
-git pull origin main
-
-# Update dependencies
-npm install
-
-# Check for vulnerabilities
-npm audit
-npm audit fix
-```
-
----
-
-## 🚨 Security Checklist
-
-Before deploying AG2R:
-
-- [ ] Strong `APP_PASSWORD` set (not default)
-- [ ] Cryptographic `SESSION_SECRET` generated
-- [ ] `DEBUG_MODE=false` in production
-- [ ] `.env` file NOT committed to Git
-- [ ] Rate limiting enabled
-- [ ] CDP restricted to localhost
-- [ ] HTTPS enabled (self-signed or valid cert)
-- [ ] Firewall configured (only necessary ports open)
-- [ ] Regular dependency audits scheduled
-- [ ] Backup plan for credential rotation
-
----
-
-## 📞 Reporting Security Issues
-
-If you discover a security vulnerability:
-
-1. **DO NOT** create a public GitHub issue
-2. Email: security@ag2r.dev (future)
-3. Wait for patch before public disclosure
-4. We aim to respond within 48 hours
-
----
-
-## 🔒 Incident Response
-
-If you suspect a security breach:
-
-1. **Immediately** change your `APP_PASSWORD`
-2. Regenerate `SESSION_SECRET`
-3. Restart the server
-4. Clear all browser sessions
-5. Review server logs for suspicious activity
-6. Rotate any credentials that may have been exposed
-
----
-
-*Security is a shared responsibility. Follow these guidelines to keep your AG2R instance secure.*
+Не публикуйте рабочий exploit, пароль или содержимое `.env` в issue. Сообщите владельцу репозитория приватным способом и укажите версию, сценарий воспроизведения и ожидаемый ущерб.

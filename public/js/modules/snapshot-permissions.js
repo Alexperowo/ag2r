@@ -1,6 +1,13 @@
 import { fetchAPI } from './api.js';
 import { permissionContent, permissionOverlay } from './dom.js';
 
+const escapeHtml = value => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
 export function renderPermissions(data) {
   if (data.permissionHtml) {
     if (data.permissionHtml === permissionContent.dataset.lastHtml) {
@@ -41,9 +48,9 @@ export function renderPermissions(data) {
           : '';
         return `
         <button class="permission-option${o.isSelected ? ' selected' : ''}${o.hasWriteIn ? ' has-writein' : ''}"
-                data-ag-click-id="${o.clickId}" data-ag-click-label="${o.num}${o.labelText}">
-          <span class="permission-option-num">${o.num}</span>
-          <span>${o.labelText}</span>
+                data-ag-click-id="${escapeHtml(o.clickId)}" data-ag-click-label="${escapeHtml(o.num + o.labelText)}">
+          <span class="permission-option-num">${escapeHtml(o.num)}</span>
+          <span>${escapeHtml(o.labelText)}</span>
           ${writeInHtml}
         </button>
         `;
@@ -51,15 +58,15 @@ export function renderPermissions(data) {
 
       let actionsHtml = buttons.map(b => {
         const cls = b.text === 'Skip' ? 'perm-skip' : 'perm-submit';
-        return `<button class="${cls}" data-ag-click-id="${b.clickId}" data-ag-click-label="${b.text}">${b.text}</button>`;
+        return `<button class="${cls}" data-ag-click-id="${escapeHtml(b.clickId)}" data-ag-click-label="${escapeHtml(b.text)}">${escapeHtml(b.text)}</button>`;
       }).join('');
 
       permissionContent.innerHTML = `
         <div class="permission-header">
           <span class="material-symbols-rounded" style="font-size:20px;color:var(--accent)">terminal</span>
-          ${title}
+          ${escapeHtml(title)}
         </div>
-        <code class="permission-command">${commandText.replace(/</g, '&lt;')}</code>
+        <code class="permission-command">${escapeHtml(commandText)}</code>
         <div class="permission-options">${optionsHtml}</div>
         <div class="permission-actions">${actionsHtml}</div>
       `;
@@ -96,22 +103,9 @@ export function renderPermissions(data) {
             const writeIn = selectedOption?.querySelector('.permission-writein');
             if (writeIn && writeIn.value.trim()) {
               try {
-                await fetchAPI('/eval', {
+                await fetchAPI('/permission-writein', {
                   method: 'POST',
-                  body: JSON.stringify({
-                    script: `(() => {
-                      const rg = document.querySelector('[role="radiogroup"]');
-                      if (!rg) return { ok: false, reason: 'no_radiogroup' };
-                      const ta = rg.querySelector('textarea');
-                      if (!ta) return { ok: false, reason: 'no_textarea' };
-                      ta.focus();
-                      const nativeSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
-                      nativeSetter.call(ta, ${JSON.stringify(writeIn.value)});
-                      ta.dispatchEvent(new Event('input', { bubbles: true }));
-                      ta.dispatchEvent(new Event('change', { bubbles: true }));
-                      return { ok: true, text: ta.value };
-                    })()`
-                  }),
+                  body: JSON.stringify({ text: writeIn.value }),
                 });
               } catch {}
               await new Promise(r => setTimeout(r, 200));

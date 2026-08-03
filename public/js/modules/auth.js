@@ -8,7 +8,10 @@ import {
   authCallbackSubmitBtn
 } from './dom.js';
 
+let focusBeforeAuth = null;
+
 export function showAuthOverlay(isOnboarding = false) {
+  if (authOverlay.classList.contains('hidden')) focusBeforeAuth = document.activeElement;
   authOverlay.classList.remove('hidden');
   authOverlay.removeAttribute('inert');
   inputBar.classList.add('hidden');
@@ -48,6 +51,11 @@ export function showAuthOverlay(isOnboarding = false) {
       setAuthStatus('', '');
     }
   }
+
+  requestAnimationFrame(() => {
+    const focusTarget = isOnboarding ? authStatus : authSigninBtn;
+    focusTarget?.focus?.();
+  });
 }
 
 export function hideAuthOverlay() {
@@ -59,6 +67,8 @@ export function hideAuthOverlay() {
     window.authDotInterval = null;
     setAuthStatus('', '');
   }
+  if (focusBeforeAuth instanceof HTMLElement) focusBeforeAuth.focus();
+  focusBeforeAuth = null;
 }
 
 export function setAuthStatus(msg, cls) {
